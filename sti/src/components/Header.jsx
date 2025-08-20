@@ -3,7 +3,7 @@ import React from 'react'
 const Header = ({ selectedOrgUnit, orgUnits }) => {
     return (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-8">
+            <div className="bg-gradient-to-r from-[#2C6693] to-[#2C6693] px-6 py-8">
                 <div className="text-center">
                     <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
                         STI Risk Screening Tool

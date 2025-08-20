@@ -1,26 +1,40 @@
 import React from 'react'
 import { cn } from '../../lib/utils'
 
-const Checkbox = React.forwardRef(({ className, checked, onChange, label, ...props }, ref) => {
+// The 'ref' is passed as the second argument from forwardRef
+const Checkbox = React.forwardRef(({ className, checked, onChange, onCheckedChange, label, ...props }, ref) => {
+  
+  // This handler ensures the component works with BOTH native onChange and library-style onCheckedChange
+  const handleChange = (e) => {
+    // For native `onChange` (which you are using)
+    if (onChange) {
+      onChange(e);
+    }
+    // For library compatibility (like shadcn/ui)
+    if (onCheckedChange) {
+      onCheckedChange(e.target.checked);
+    }
+  };
+  
   return (
-    <div className="flex items-start space-x-3 p-3 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 cursor-pointer" onClick={() => onChange({ target: { checked: !checked } })}>
+    <label className={cn("flex items-center space-x-2", { 'cursor-pointer': !!label })}>
       <input
         type="checkbox"
-        ref={ref}
+        ref={ref} // Corrected: use the ref from the arguments
         checked={checked}
-        onChange={onChange}
+        onChange={handleChange} // Use our new flexible handler
         className={cn(
-          "h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 focus:ring-offset-2 mt-0.5 flex-shrink-0",
+          "h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 focus:ring-offset-0 cursor-pointer",
           className
         )}
         {...props}
       />
       {label && (
-        <label className="text-sm sm:text-base font-medium text-gray-700 cursor-pointer leading-relaxed">
+        <span className="text-sm text-gray-700 select-none">
           {label}
-        </label>
+        </span>
       )}
-    </div>
+    </label>
   )
 })
 

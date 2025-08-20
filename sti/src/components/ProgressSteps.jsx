@@ -1,7 +1,6 @@
 import React from 'react'
 import { Card, CardContent } from './ui/card'
-import { FiUser, FiCheckCircle } from 'react-icons/fi'
-import { Shield, Calculator } from 'lucide-react'
+import {FiCheckCircle } from 'react-icons/fi'
 
 const ProgressSteps = ({ currentStep, steps }) => {
     return (

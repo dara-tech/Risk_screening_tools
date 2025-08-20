@@ -9,7 +9,6 @@ export const config = {
     defaultUrl: 'http://localhost:8080',
     defaultUsername: 'admin',
     defaultPassword: 'district',
-    apiVersion: '2.40',
     timeout: 30000, // 30 seconds
     maxRetries: 3
   },

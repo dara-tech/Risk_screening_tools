@@ -6,8 +6,11 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Progress } from './ui/progress'
 import { Badge } from './ui/badge'
-import { FiUpload, FiFile, FiCheckCircle, FiDownload, FiDatabase, FiX, FiAlertCircle, FiInfo, FiClock, FiTrendingUp } from 'react-icons/fi'
+import { FiUpload, FiFile, FiCheckCircle, FiDownload, FiDatabase, FiX, FiAlertCircle, FiInfo, FiClock, FiTrendingUp, FiMapPin } from 'react-icons/fi'
 import { Upload, FileText, Database, Activity, BarChart3, Settings } from 'lucide-react'
+import config from '../lib/config'
+import { fetchProgramStageDataElementsWithOptions } from '../lib/dhis2FormData'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 
 const ImportTool = () => {
     const [selectedFile, setSelectedFile] = useState(null)
@@ -19,9 +22,119 @@ const ImportTool = () => {
     const [importStats, setImportStats] = useState(null)
     const [fileValidation, setFileValidation] = useState(null)
     const [showAdvanced, setShowAdvanced] = useState(false)
+    const [orgUnits, setOrgUnits] = useState([])
+    const [selectedOrgUnit, setSelectedOrgUnit] = useState('')
+    const [fieldMappings, setFieldMappings] = useState({})
+    const [dataElementOptionsById, setDataElementOptionsById] = useState({})
+    const [programTeAttributes, setProgramTeAttributes] = useState({})
     
     const engine = useDataEngine()
     const { showToast } = useToast()
+
+    // Load org units (level 4 within user hierarchy)
+    useEffect(() => {
+        const loadOrgUnits = async () => {
+            try {
+                const ousResp = await engine.query({
+                    ous: {
+                        resource: 'organisationUnits',
+                        params: {
+                            withinUserHierarchy: true,
+                            paging: false,
+                            fields: 'id,displayName,level'
+                        }
+                    }
+                })
+                const list = ousResp?.ous?.organisationUnits || []
+                const filtered = list.filter(ou => ou.level === 4)
+                setOrgUnits(filtered)
+                if (filtered.length > 0) setSelectedOrgUnit(filtered[0].id)
+            } catch (e) {
+                console.error('Failed to load organisation units:', e)
+                showToast({ title: 'Error', description: 'Failed to load organization units', variant: 'error' })
+            }
+        }
+        loadOrgUnits()
+        const loadStageMappings = async () => {
+            try {
+                const { dataElements, dataElementOptions } = await fetchProgramStageDataElementsWithOptions(engine, config.program.stageId)
+                const mappings = {}
+                dataElements.forEach(psde => {
+                    const de = psde.dataElement
+                    const n = (de.name || '').toLowerCase()
+                    if (n.includes('what is your sex at birth')) mappings.sexAtBirth = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('identify your gender') || (n.includes('how do you identify') && n.includes('gender'))) mappings.genderIdentity = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('concerns/worries') || n.includes('sexual health')) mappings.sexualHealthConcerns = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('used to have sex') || n.includes('past 6months')) mappings.hadSexPast6Months = { id: de.id, valueType: de.valueType }
+                    else if (n.includes("partner's sexual identify is male")) mappings.partnerMale = { id: de.id, valueType: de.valueType }
+                    else if (n.includes("partner's sexual identify is female")) mappings.partnerFemale = { id: de.id, valueType: de.valueType }
+                    else if (n.includes("partner's sexual identify is tgw")) mappings.partnerTGW = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('how many sexual partner')) mappings.numberOfSexualPartners = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('have had the following practice')) mappings.past6MonthsPractices = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('sex without a condom')) mappings.sexWithoutCondom = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('sex with known hiv')) mappings.sexWithHIVPartner = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('sti symptom')) mappings.stiSymptoms = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('tested syphilis positive')) mappings.syphilisPositive = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('had test for hiv in past 6 months')) mappings.hivTestPast6Months = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('result of hiv test')) mappings.hivTestResult = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('when did your last hiv test')) mappings.lastHivTestDate = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('currently on prep')) mappings.currentlyOnPrep = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('have you ever on prep') || n.includes('ever on prep')) mappings.everOnPrep = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('receive money') && n.includes('sex')) mappings.receiveMoneyForSex = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('paid for sex')) mappings.paidForSex = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('injected drug/shared needle') || n.includes('injected drug')) mappings.injectedDrugSharedNeedle = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('alcohol/drug before sex')) mappings.alcoholDrugBeforeSex = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('group sex') || n.includes('chemsex')) mappings.groupSexChemsex = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('abortion')) mappings.abortion = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('forced to have sex')) mappings.forcedSex = { id: de.id, valueType: de.valueType }
+                    else if (n.includes('non-above')) mappings.noneOfAbove = { id: de.id, valueType: de.valueType }
+                    else if (n === 'risk screening result' || n.includes('risk screening result')) mappings.riskScreeningResult = { id: de.id, valueType: de.valueType }
+                    else if (n === 'risk screening score' || n.includes('risk screening score')) mappings.riskScreeningScore = { id: de.id, valueType: de.valueType }
+                })
+                setFieldMappings(mappings)
+                setDataElementOptionsById(dataElementOptions || {})
+            } catch (e) {
+                console.error('Failed to load program stage mappings/options:', e)
+            }
+        }
+        const loadProgramTeiAttributes = async () => {
+            try {
+                const resp = await engine.query({
+                    program: {
+                        resource: 'programs',
+                        id: config.program.id,
+                        params: {
+                            fields: 'id,name,programTrackedEntityAttributes[mandatory,trackedEntityAttribute[id,name,code,valueType,unique]]'
+                        }
+                    }
+                })
+                const pteas = resp?.program?.programTrackedEntityAttributes || []
+                const map = {}
+                pteas.forEach(p => {
+                    const tea = p.trackedEntityAttribute
+                    const n = (tea.name || '').toLowerCase()
+                    console.log('🔍 [TEI] Checking attribute:', tea.name, '->', tea.id)
+                    if (n.includes('system') && n.includes('id')) map.systemId = tea.id
+                    else if (n.includes('uuic')) map.uuic = tea.id
+                    else if ((n.includes('family') && n.includes('name')) || n.includes('fname')) map.familyName = tea.id
+                    else if ((n.includes('last') && n.includes('name')) || n.includes('lname')) map.lastName = tea.id
+                    else if (n === 'sex' || n.includes('sex') || n.includes('gender')) map.sex = tea.id
+                    else if (n.includes('date of birth') || n === 'dob') map.dateOfBirth = tea.id
+                    else if (n.includes('province')) map.province = tea.id
+                    else if (n === 'od' || n.includes('operational district')) map.od = tea.id
+                    else if (n.includes('district')) map.district = tea.id
+                    else if (n.includes('commune')) map.commune = tea.id
+                })
+                console.log('🔍 [TEI] Final TEI attribute mappings:', map)
+                setProgramTeAttributes(map)
+            } catch (e) {
+                console.error('Failed to load program TEI attributes:', e)
+            }
+        }
+        loadStageMappings()
+        loadProgramTeiAttributes()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     const handleFileSelect = (event) => {
         const file = event.target.files[0]
@@ -126,6 +239,15 @@ SYS002,UUIC987654321,Smith,Jane,Female,1985-08-22,Battambang,OD002,District 2,Co
             return
         }
 
+        if (!selectedOrgUnit) {
+            showToast({
+                title: 'Select Location',
+                description: 'Please select an organization unit before importing',
+                variant: 'error'
+            })
+            return
+        }
+
         if (fileValidation && !fileValidation.isValid) {
             showToast({
                 title: 'File Validation Failed',
@@ -164,7 +286,7 @@ SYS002,UUIC987654321,Smith,Jane,Female,1985-08-22,Battambang,OD002,District 2,Co
             setUploadProgress(100)
             setUploadPhase('processing')
 
-            // Phase 2: Processing Progress (0-100%)
+            // Phase 2: Processing Progress (0-100%) + Actual Import
             const processingInterval = setInterval(() => {
                 setProcessingProgress(prev => {
                     if (prev >= 100) {
@@ -188,21 +310,212 @@ SYS002,UUIC987654321,Smith,Jane,Female,1985-08-22,Battambang,OD002,District 2,Co
                 })
             }, 250)
 
-            // Simulate processing time based on file size
-            const processingTime = Math.min(6000, Math.max(3000, selectedFile.size / 500)) // 3-6 seconds based on file size
-            await new Promise(resolve => setTimeout(resolve, processingTime))
+            // Actual import
+            console.log('📁 [IMPORT] Starting file processing...')
+            console.log('📁 [IMPORT] File name:', selectedFile.name)
+            console.log('📁 [IMPORT] File size:', selectedFile.size, 'bytes')
+            
+            const text = await selectedFile.text()
+            console.log('📁 [IMPORT] File content length:', text.length, 'characters')
+            
+            const lines = text.trim().split(/\r?\n/)
+            console.log('📁 [IMPORT] Total lines in file:', lines.length)
+            
+            const headers = lines[0].split(',').map(h => h.trim())
+            console.log('📁 [IMPORT] CSV Headers:', headers)
+            
+            const total = Math.max(0, lines.length - 1)
+            console.log('📁 [IMPORT] Data rows to process:', total)
+
+            // Map headers to internal field keys
+            const headerToField = {
+                'System ID': 'systemId', 'UUIC': 'uuic', 'Family Name': 'familyName', 'Last Name': 'lastName', 'Sex': 'sex', 'Date of Birth': 'dateOfBirth', 'Province': 'province', 'OD': 'od', 'District': 'district', 'Commune': 'commune',
+                'Sex at Birth': 'sexAtBirth', 'Gender Identity': 'genderIdentity', 'Sexual Health Concerns': 'sexualHealthConcerns', 'Had Sex Past 6 Months': 'hadSexPast6Months', "Partner Male": 'partnerMale', 'Partner Female': 'partnerFemale', 'Partner TGW': 'partnerTGW', 'Number of Sexual Partners': 'numberOfSexualPartners', 'Past 6 Months Practices': 'past6MonthsPractices', 'HIV Test Past 6 Months': 'hivTestPast6Months', 'HIV Test Result': 'hivTestResult', 'Risk Screening Result': 'riskScreeningResult', 'Sex with HIV Partner': 'sexWithHIVPartner', 'Sex without Condom': 'sexWithoutCondom', 'STI Symptoms': 'stiSymptoms', 'Syphilis Positive': 'syphilisPositive', 'Receive Money for Sex': 'receiveMoneyForSex', 'Paid for Sex': 'paidForSex', 'Injected Drug Shared Needle': 'injectedDrugSharedNeedle', 'Alcohol Drug Before Sex': 'alcoholDrugBeforeSex', 'Group Sex Chemsex': 'groupSexChemsex', 'Currently on PrEP': 'currentlyOnPrep', 'Last HIV Test Date': 'lastHivTestDate', 'Abortion': 'abortion', 'Forced Sex': 'forcedSex', 'Risk Screening Score': 'riskScreeningScore', 'None of Above': 'noneOfAbove', 'Ever on PrEP': 'everOnPrep'
+            }
+
+            let success = 0, failed = 0
+            console.log('📁 [IMPORT] Starting row processing...')
+            console.log('📁 [IMPORT] Field mappings loaded:', Object.keys(fieldMappings).length, 'fields')
+            console.log('📁 [IMPORT] Program TE attributes loaded:', Object.keys(programTeAttributes).length, 'attributes')
+            
+            for (let i = 1; i < lines.length; i++) {
+                const row = lines[i]
+                if (!row.trim()) {
+                    console.log(`📁 [IMPORT] Row ${i}: Skipping empty row`)
+                    continue
+                }
+                
+                console.log(`📁 [IMPORT] Processing row ${i}/${total}:`, row.substring(0, 100) + (row.length > 100 ? '...' : ''))
+                
+                const cells = row.split(',')
+                console.log(`📁 [IMPORT] Row ${i}: Parsed ${cells.length} cells`)
+                
+                const formData = {}
+                headers.forEach((h, idx) => {
+                    const key = headerToField[h]
+                    if (key) {
+                        formData[key] = (cells[idx] || '').trim()
+                        if (formData[key]) {
+                            console.log(`📁 [IMPORT] Row ${i}: Mapped "${h}" -> "${key}" = "${formData[key]}"`)
+                        }
+                    }
+                })
+
+                // Build TEI attributes using program TE mapping (fallback to config)
+                const teAttributesMap = Object.keys(programTeAttributes).length > 0 ? programTeAttributes : {
+                    systemId: config.mapping.trackedEntityAttributes.System_ID,
+                    uuic: config.mapping.trackedEntityAttributes.UUIC,
+                    familyName: config.mapping.trackedEntityAttributes.Family_Name,
+                    lastName: config.mapping.trackedEntityAttributes.Last_Name,
+                    sex: config.mapping.trackedEntityAttributes.Sex,
+                    dateOfBirth: config.mapping.trackedEntityAttributes.DOB,
+                    province: config.mapping.trackedEntityAttributes.Province,
+                    od: config.mapping.trackedEntityAttributes.OD,
+                    district: config.mapping.trackedEntityAttributes.District,
+                    commune: config.mapping.trackedEntityAttributes.Commune
+                }
+                
+                // Ensure sex field is always mapped (fallback to config if dynamic mapping failed)
+                if (!teAttributesMap.sex && config.mapping.trackedEntityAttributes.Sex) {
+                    teAttributesMap.sex = config.mapping.trackedEntityAttributes.Sex
+                    console.log(`📁 [IMPORT] Row ${i}: Using fallback sex mapping: ${config.mapping.trackedEntityAttributes.Sex}`)
+                }
+                console.log(`📁 [IMPORT] Row ${i}: Using TE attributes map:`, Object.keys(teAttributesMap))
+                
+                const attributes = []
+                Object.entries(teAttributesMap).forEach(([fk, attrId]) => {
+                    if (attrId && formData[fk]) {
+                        attributes.push({ attribute: attrId, value: String(formData[fk]) })
+                        console.log(`📁 [IMPORT] Row ${i}: TEI attribute "${fk}" = "${formData[fk]}"`)
+                    } else if (fk === 'sex') {
+                        console.log(`📁 [IMPORT] Row ${i}: ⚠️ Gender field "${fk}" missing or no attribute ID. formData[${fk}] = "${formData[fk]}", attrId = "${attrId}"`)
+                    }
+                })
+                console.log(`📁 [IMPORT] Row ${i}: Built ${attributes.length} TEI attributes`)
+
+                try {
+                    console.log(`📁 [IMPORT] Row ${i}: Creating TEI...`)
+                    // TEI
+                    const teiPayload = { trackedEntityInstances: [{ trackedEntityType: config.program.trackedEntityType, orgUnit: selectedOrgUnit, attributes }] }
+                    console.log(`📁 [IMPORT] Row ${i}: TEI payload:`, JSON.stringify(teiPayload, null, 2))
+                    
+                    const teiRes = await engine.mutate({
+                        resource: 'trackedEntityInstances', type: 'create', data: teiPayload
+                    })
+                    console.log(`📁 [IMPORT] Row ${i}: TEI response:`, teiRes)
+                    
+                    const teiId = teiRes?.response?.importSummaries?.[0]?.reference
+                    if (!teiId) {
+                        console.error(`📁 [IMPORT] Row ${i}: TEI creation failed:`, teiRes?.response?.importSummaries?.[0])
+                        throw new Error(teiRes?.response?.importSummaries?.[0]?.description || 'TEI failed')
+                    }
+                    console.log(`📁 [IMPORT] Row ${i}: TEI created successfully with ID:`, teiId)
+
+                    // Enrollment
+                    console.log(`📁 [IMPORT] Row ${i}: Creating enrollment...`)
+                    const enrollmentPayload = { enrollments: [{ trackedEntityInstance: teiId, program: config.program.id, orgUnit: selectedOrgUnit, enrollmentDate: new Date().toISOString().split('T')[0], incidentDate: new Date().toISOString().split('T')[0] }] }
+                    console.log(`📁 [IMPORT] Row ${i}: Enrollment payload:`, JSON.stringify(enrollmentPayload, null, 2))
+                    
+                    const enrRes = await engine.mutate({
+                        resource: 'enrollments', type: 'create', data: enrollmentPayload
+                    })
+                    console.log(`📁 [IMPORT] Row ${i}: Enrollment response:`, enrRes)
+                    
+                    const enrollmentId = enrRes?.response?.importSummaries?.[0]?.reference
+                    if (!enrollmentId) {
+                        console.error(`📁 [IMPORT] Row ${i}: Enrollment failed:`, enrRes?.response?.importSummaries?.[0])
+                        throw new Error(enrRes?.response?.importSummaries?.[0]?.description || 'Enrollment failed')
+                    }
+                    console.log(`📁 [IMPORT] Row ${i}: Enrollment created successfully with ID:`, enrollmentId)
+
+                    // Event dataValues with normalization
+                    console.log(`📁 [IMPORT] Row ${i}: Building event data values...`)
+                    const dataValues = []
+                    Object.entries(fieldMappings).forEach(([formField, mapping]) => {
+                        const raw = formData[formField]
+                        if (raw === undefined || raw === '') return
+                        let value = raw
+                        const options = dataElementOptionsById[mapping.id] || []
+                        
+                        console.log(`📁 [IMPORT] Row ${i}: Processing field "${formField}" = "${raw}" (type: ${mapping.valueType})`)
+                        
+                        if ((mapping.valueType === 'TRUE_ONLY' || mapping.valueType === 'BOOLEAN') && typeof raw === 'string') {
+                            const v = raw.toLowerCase()
+                            if (mapping.valueType === 'TRUE_ONLY') {
+                                if (v === 'yes' || v === 'true') {
+                                    value = 'true'
+                                    console.log(`📁 [IMPORT] Row ${i}: TRUE_ONLY field "${formField}" normalized to "true"`)
+                                } else {
+                                    console.log(`📁 [IMPORT] Row ${i}: TRUE_ONLY field "${formField}" skipped (not true)`)
+                                    return
+                                }
+                            } else {
+                                value = (v === 'yes' || v === 'true') ? 'true' : 'false'
+                                console.log(`📁 [IMPORT] Row ${i}: BOOLEAN field "${formField}" normalized to "${value}"`)
+                            }
+                        }
+                        
+                        if (options.length > 0) {
+                            const lower = String(raw).toLowerCase()
+                            const match = options.find(o => o.code?.toLowerCase() === lower || o.name?.toLowerCase() === lower)
+                            if (match?.code) {
+                                value = match.code
+                                console.log(`📁 [IMPORT] Row ${i}: Option set field "${formField}" mapped "${raw}" -> "${match.code}"`)
+                            }
+                        }
+                        
+                        dataValues.push({ dataElement: mapping.id, value: String(value) })
+                        console.log(`📁 [IMPORT] Row ${i}: Added data value "${formField}" = "${value}"`)
+                    })
+                    console.log(`📁 [IMPORT] Row ${i}: Built ${dataValues.length} data values`)
+
+                    console.log(`📁 [IMPORT] Row ${i}: Creating event...`)
+                    const eventPayload = { events: [{ trackedEntityInstance: teiId, program: config.program.id, programStage: config.program.stageId, orgUnit: selectedOrgUnit, enrollment: enrollmentId, eventDate: new Date().toISOString().split('T')[0], status: 'COMPLETED', dataValues }] }
+                    console.log(`📁 [IMPORT] Row ${i}: Event payload:`, JSON.stringify(eventPayload, null, 2))
+                    
+                    const evtRes = await engine.mutate({
+                        resource: 'events', type: 'create', data: eventPayload
+                    })
+                    console.log(`📁 [IMPORT] Row ${i}: Event response:`, evtRes)
+                    
+                    const eventId = evtRes?.response?.importSummaries?.[0]?.reference
+                    if (!eventId) {
+                        console.error(`📁 [IMPORT] Row ${i}: Event creation failed:`, evtRes?.response?.importSummaries?.[0])
+                        throw new Error(evtRes?.response?.importSummaries?.[0]?.description || 'Event failed')
+                    }
+                    console.log(`📁 [IMPORT] Row ${i}: Event created successfully with ID:`, eventId)
+                    console.log(`📁 [IMPORT] Row ${i}: ✅ SUCCESS - All entities created`)
+                    success++
+                } catch (rowErr) {
+                    console.error(`📁 [IMPORT] Row ${i}: ❌ FAILED - Error:`, rowErr)
+                    console.error(`📁 [IMPORT] Row ${i}: Error details:`, rowErr.message)
+                    failed++
+                }
+
+                // Update progress
+                const pct = Math.round(((i) / lines.length) * 100)
+                setProcessingProgress(pct)
+                console.log(`📁 [IMPORT] Progress: ${pct}% (${i}/${total} rows processed)`)
+            }
             
             clearInterval(processingInterval)
             setProcessingProgress(100)
             setUploadPhase('completed')
 
-            // Generate import statistics
+            // Import statistics
+            console.log('📁 [IMPORT] ===== IMPORT COMPLETED =====')
+            console.log('📁 [IMPORT] Final statistics:')
+            console.log('📁 [IMPORT] - Total records:', total)
+            console.log('📁 [IMPORT] - Successful:', success)
+            console.log('📁 [IMPORT] - Failed:', failed)
+            console.log('📁 [IMPORT] - Success rate:', ((success / total) * 100).toFixed(1) + '%')
+            
             const stats = {
-                totalRecords: Math.floor(Math.random() * 500) + 100,
-                successful: Math.floor(Math.random() * 450) + 80,
-                failed: Math.floor(Math.random() * 50) + 5,
-                skipped: Math.floor(Math.random() * 20) + 2,
-                processingTime: Math.floor(Math.random() * 30) + 15,
+                totalRecords: total,
+                successful: success,
+                failed: failed,
+                skipped: 0,
+                processingTime: 0,
                 fileSize: selectedFile.size,
                 importDate: new Date().toISOString()
             }
@@ -324,7 +637,7 @@ SYS002,UUIC987654321,Smith,Jane,Female,1985-08-22,Battambang,OD002,District 2,Co
     }
 
     return (
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col overflow-y-auto">
             {/* Main Content */}
             <div className="flex-1 py-4 sm:py-8">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
@@ -340,7 +653,7 @@ SYS002,UUIC987654321,Smith,Jane,Female,1985-08-22,Battambang,OD002,District 2,Co
                     </div>
 
                     {/* Import Options Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Download Template */}
                         <Card className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 hover:border-blue-300 transition-all duration-200">
                             <CardContent className="p-6 flex flex-col h-full">
@@ -378,12 +691,31 @@ SYS002,UUIC987654321,Smith,Jane,Female,1985-08-22,Battambang,OD002,District 2,Co
                                         <p className="text-xs text-gray-500">Advanced upload</p>
                                     </div>
                                 </div>
-                                <p className="text-sm text-gray-600 mb-4 flex-grow">
+                                <p className="text-sm text-gray-600 mb-4">
                                     Upload your CSV file with advanced validation and streaming progress
                                 </p>
+                                {/* Org Unit Selector */}
+                                <div className="space-y-2 mb-4">
+                                    <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
+                                        <FiMapPin className="w-4 h-4 text-gray-500" />
+                                        <span>Location</span>
+                                    </label>
+                                    <Select value={selectedOrgUnit} onValueChange={setSelectedOrgUnit}>
+                                        <SelectTrigger className="h-10 bg-white border border-gray-300 rounded-md focus:border-gray-400 focus:ring-1 focus:ring-gray-400">
+                                            <SelectValue placeholder="Select organization unit" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white border border-gray-200 rounded-md max-h-60 shadow-lg">
+                                            {orgUnits.map(ou => (
+                                                <SelectItem key={ou.id} value={ou.id} className="hover:bg-gray-50">
+                                                    {ou.displayName || ou.id}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                                 <Button 
                                     onClick={handleImport}
-                                    disabled={!selectedFile || importing || (fileValidation && !fileValidation.isValid)}
+                                    disabled={!selectedFile || importing || (fileValidation && !fileValidation.isValid) || !selectedOrgUnit}
                                     className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-xl"
                                 >
                                     <FiUpload className="w-4 h-4 mr-2" />
@@ -478,21 +810,21 @@ SYS002,UUIC987654321,Smith,Jane,Female,1985-08-22,Battambang,OD002,District 2,Co
                                                 or click to browse files
                                             </p>
                                         </div>
-                                        <Input
-                                            type="file"
-                                            accept=".csv"
-                                            onChange={handleFileSelect}
-                                            className="hidden"
-                                            id="file-upload"
-                                        />
-                                        <label htmlFor="file-upload">
+                                        <div className="relative">
+                                            <Input
+                                                type="file"
+                                                accept=".csv"
+                                                onChange={handleFileSelect}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                id="file-upload"
+                                            />
                                             <Button 
                                                 variant="outline" 
-                                                className="cursor-pointer border-gray-200 hover:border-blue-300 text-gray-700 hover:text-blue-700 rounded-xl"
+                                                className="w-full border-gray-200 hover:border-blue-300 text-gray-700 hover:text-blue-700 rounded-xl"
                                             >
                                                 Choose File
                                             </Button>
-                                        </label>
+                                        </div>
                                     </div>
                                 )}
                             </div>

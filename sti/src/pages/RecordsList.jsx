@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useDataEngine } from '@dhis2/app-runtime'
+
 import { t } from '../lib/i18n'
 import { useToast } from '../components/ui/ui/toast'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
@@ -7,108 +8,92 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Badge } from '../components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
-import { FiSearch, FiFilter, FiDownload, FiRefreshCw, FiEye, FiCalendar, FiUser, FiMapPin } from 'react-icons/fi'
-import { Shield, Activity, Calculator, FileText } from 'lucide-react'
+import { FiDownload, FiRefreshCw, FiEye, FiCalendar, FiMapPin, FiChevronLeft, FiChevronRight } from 'react-icons/fi'
+import { Activity, FileText } from 'lucide-react'
 import config from '../lib/config'
+import QuarterPicker from '../components/QuarterPicker'
+import MonthPicker from '../components/MonthPicker'
+import YearPicker from '../components/YearPicker'
+import Filters from '../components/records-list/Filters'
+import HeaderBar from '../components/records-list/HeaderBar'
+import Pagination from '../components/records-list/Pagination'
+import Table from '../components/records-list/Table'
 
 const RecordsList = () => {
     const [records, setRecords] = useState([])
     const [loading, setLoading] = useState(false)
-    const [searchTerm, setSearchTerm] = useState('')
-    const [selectedPeriod, setSelectedPeriod] = useState('')
     const [selectedOrgUnit, setSelectedOrgUnit] = useState('')
+    const [selectedPeriodType, setSelectedPeriodType] = useState('')
+    const [selectedPeriod, setSelectedPeriod] = useState('')
+    const [selectedYear, setSelectedYear] = useState('')
+    const [selectedQuarter, setSelectedQuarter] = useState(null)
+    const [selectedMonth, setSelectedMonth] = useState(null)
+    const [showYearPicker, setShowYearPicker] = useState(false)
+    const [showQuarterPicker, setShowQuarterPicker] = useState(false)
+    const [showMonthPicker, setShowMonthPicker] = useState(false)
     const [orgUnits, setOrgUnits] = useState([])
     const [periods, setPeriods] = useState([])
     const [filteredRecords, setFilteredRecords] = useState([])
-    const [periodType, setPeriodType] = useState('year')
+    
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1)
+    const [pageSize, setPageSize] = useState(50)
+    const [totalPages, setTotalPages] = useState(1)
+    const [totalRecords, setTotalRecords] = useState(0)
+    const [paginatedRecords, setPaginatedRecords] = useState([])
+    // For accurate display range regardless of render timing
+    const [displayStartIndex, setDisplayStartIndex] = useState(0)
+    const [displayEndIndex, setDisplayEndIndex] = useState(0)
+    // Responsive helpers
+    const [isSmallScreen, setIsSmallScreen] = useState(false)
+
     
     const engine = useDataEngine()
     const { showToast } = useToast()
+    const latestPageRequestedRef = useRef(0)
+
+    // Close pickers when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (!event.target.closest('.picker-container')) {
+                setShowYearPicker(false)
+                setShowQuarterPicker(false)
+                setShowMonthPicker(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     // Load data on mount
     useEffect(() => {
         fetchOrgUnits()
-        fetchPeriods()
+        generatePeriods()
     }, [])
 
-    // Update selected period when period type changes
+    // Track screen size for responsive pagination/header
     useEffect(() => {
-        if (periods.length > 0) {
-            const firstPeriodOfType = periods.find(p => p.type === periodType)
-            if (firstPeriodOfType) {
-                setSelectedPeriod(firstPeriodOfType.value)
-            }
-        }
-    }, [periodType, periods])
+        const handleResize = () => setIsSmallScreen(window.innerWidth < 640)
+        handleResize()
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [])
 
-    // Filter records when search or filters change
+    // Reset period selections when period type changes
     useEffect(() => {
-        let filtered = records
-        console.log('🔍 Filtering records:', { recordsCount: records.length, searchTerm, selectedPeriod, selectedOrgUnit })
+        setSelectedPeriod('')
+        setSelectedQuarter(null)
+        setSelectedMonth(null)
+        setShowYearPicker(false)
+        setShowQuarterPicker(false)
+        setShowMonthPicker(false)
+    }, [selectedPeriodType])
 
-        // Filter by search term
-        if (searchTerm) {
-            filtered = filtered.filter(record => 
-                record.familyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                record.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                record.systemId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                record.uuic?.toLowerCase().includes(searchTerm.toLowerCase())
-            )
-        }
-
-        // Filter by period - handle year, quarter, and monthly periods
-        if (selectedPeriod) {
-            console.log('🔍 Period filtering:', { selectedPeriod })
-            filtered = filtered.filter(record => {
-                if (!record.eventDate) {
-                    console.log('❌ No eventDate for record:', record.id)
-                    return false
-                }
-                const eventDate = new Date(record.eventDate)
-                const recordYear = eventDate.getFullYear().toString()
-                const recordMonth = (eventDate.getMonth() + 1).toString().padStart(2, '0')
-                const recordQuarter = Math.ceil((eventDate.getMonth() + 1) / 3).toString()
-                const recordPeriod = recordYear + recordMonth
-                
-                let matches = false
-                
-                // Check if selectedPeriod is a year (4 digits)
-                if (selectedPeriod.length === 4 && /^\d{4}$/.test(selectedPeriod)) {
-                    matches = recordYear === selectedPeriod
-                }
-                // Check if selectedPeriod is a quarter (YYYYQ# format)
-                else if (selectedPeriod.includes('Q')) {
-                    const [year, quarter] = selectedPeriod.split('Q')
-                    matches = recordYear === year && recordQuarter === quarter
-                }
-                // Check if selectedPeriod is a month (YYYYMM format)
-                else if (selectedPeriod.length === 6 && /^\d{6}$/.test(selectedPeriod)) {
-                    matches = recordPeriod === selectedPeriod
-                }
-                
-                console.log('📅 Period check:', { 
-                    recordId: record.id, 
-                    eventDate: record.eventDate, 
-                    recordYear,
-                    recordMonth,
-                    recordQuarter,
-                    recordPeriod, 
-                    selectedPeriod, 
-                    matches 
-                })
-                return matches
-            })
-        }
-
-        // Filter by org unit - records are already filtered by the API call
-        // This is just a safety check
-        if (selectedOrgUnit) {
-            filtered = filtered.filter(record => record.orgUnit === selectedOrgUnit)
-        }
-
-        console.log('📋 Filtered records:', { filteredCount: filtered.length, filtered })
-        setFilteredRecords(filtered)
-    }, [records, searchTerm, selectedPeriod, selectedOrgUnit])
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [selectedPeriodType, selectedPeriod])
 
     const fetchOrgUnits = useCallback(async () => {
         try {
@@ -127,9 +112,10 @@ const RecordsList = () => {
             const filteredOrgUnits = orgUnitsList.filter(ou => ou.level === 4)
             setOrgUnits(filteredOrgUnits)
             
-            if (filteredOrgUnits.length > 0) {
-                setSelectedOrgUnit(filteredOrgUnits[0].id)
-            }
+            // Don't auto-select first organization - let user choose
+            // if (filteredOrgUnits.length > 0) {
+            //     setSelectedOrgUnit(filteredOrgUnits[0].id)
+            // }
         } catch (error) {
             console.error('Error loading org units:', error)
             showToast({
@@ -140,99 +126,92 @@ const RecordsList = () => {
         }
     }, [engine, showToast])
 
-    const fetchPeriods = useCallback(async () => {
+    const generatePeriods = useCallback(() => {
         try {
             const periods = []
             const today = new Date()
             const currentYear = today.getFullYear()
             
-            // Add current year
-            periods.push({
-                value: currentYear.toString(),
-                label: `${currentYear} (Year)`,
-                type: 'year'
-            })
-            
-            // Add last 2 years
-            for (let i = 1; i <= 2; i++) {
-                const year = currentYear - i
-                periods.push({
-                    value: year.toString(),
-                    label: `${year} (Year)`,
-                    type: 'year'
-                })
-            }
-            
-            // Add current year quarters
-            for (let quarter = 1; quarter <= 4; quarter++) {
-                const quarterLabel = `Q${quarter}`
-                const quarterValue = `${currentYear}Q${quarter}`
-                periods.push({
-                    value: quarterValue,
-                    label: `${currentYear} ${quarterLabel}`,
-                    type: 'quarter'
-                })
-            }
-            
-            // Add last year quarters
-            for (let quarter = 1; quarter <= 4; quarter++) {
-                const year = currentYear - 1
-                const quarterLabel = `Q${quarter}`
-                const quarterValue = `${year}Q${quarter}`
-                periods.push({
-                    value: quarterValue,
-                    label: `${year} ${quarterLabel}`,
-                    type: 'quarter'
-                })
-            }
-            
-            // Add last 12 months
-            for (let i = 0; i < 12; i++) {
-                const date = new Date(currentYear, today.getMonth() - i, 1)
-                const year = date.getFullYear()
-                const month = date.getMonth() + 1
-                const monthName = date.toLocaleDateString('en-US', { month: 'short' })
-                const periodValue = year.toString() + month.toString().padStart(2, '0')
-                periods.push({
-                    value: periodValue,
-                    label: `${monthName} ${year}`,
-                    type: 'month'
-                })
+            if (selectedPeriodType === 'yearly') {
+                // Generate years (current year and last 5 years)
+                for (let i = 0; i <= 5; i++) {
+                    const year = currentYear - i
+                    periods.push({
+                        value: year.toString(),
+                        label: `${year} (Year)`
+                    })
+                }
+            } else if (selectedPeriodType === 'quarterly') {
+                // Generate quarters for current year and last 2 years
+                for (let yearOffset = 0; yearOffset <= 2; yearOffset++) {
+                    const year = currentYear - yearOffset
+                    for (let quarter = 1; quarter <= 4; quarter++) {
+                        const quarterLabel = `Q${quarter}`
+                        periods.push({
+                            value: `${year}Q${quarter}`,
+                            label: `${year} ${quarterLabel}`
+                        })
+                    }
+                }
+            } else if (selectedPeriodType === 'monthly') {
+                // Generate last 24 months
+                for (let i = 0; i < 24; i++) {
+                    const date = new Date(currentYear, today.getMonth() - i, 1)
+                    const year = date.getFullYear()
+                    const month = date.getMonth() + 1
+                    const monthName = date.toLocaleDateString('en-US', { month: 'short' })
+                    const periodValue = year.toString() + month.toString().padStart(2, '0')
+                    periods.push({
+                        value: periodValue,
+                        label: `${monthName} ${year}`
+                    })
+                }
             }
             
             setPeriods(periods)
-            // Set initial period based on period type
-            const initialPeriod = periods.find(p => p.type === 'year')
-            setSelectedPeriod(initialPeriod?.value || periods[0]?.value || '')
+            
+            // Set default period based on type
+            if (periods.length > 0 && !selectedPeriod) {
+                if (selectedPeriodType === 'yearly') {
+                    setSelectedPeriod(currentYear.toString())
+                } else if (selectedPeriodType === 'quarterly') {
+                    const currentQuarter = Math.ceil((today.getMonth() + 1) / 3)
+                    setSelectedPeriod(`${currentYear}Q${currentQuarter}`)
+                } else if (selectedPeriodType === 'monthly') {
+                    const currentMonth = (today.getMonth() + 1).toString().padStart(2, '0')
+                    setSelectedPeriod(`${currentYear}${currentMonth}`)
+                }
+            }
         } catch (error) {
             console.error('Error generating periods:', error)
         }
-    }, [])
+    }, [selectedPeriodType, selectedPeriod])
 
     const fetchRecords = useCallback(async () => {
         if (!selectedOrgUnit || !selectedPeriod) return
 
         setLoading(true)
         try {
+            const requestedPage = currentPage
+            latestPageRequestedRef.current = requestedPage
             // Convert period to start and end dates
             let startDate, endDate
             
-            // Check if selectedPeriod is a year (4 digits)
-            if (selectedPeriod.length === 4 && /^\d{4}$/.test(selectedPeriod)) {
+            if (selectedPeriodType === 'yearly') {
+                // Year format: YYYY
                 startDate = `${selectedPeriod}-01-01`
                 endDate = `${selectedPeriod}-12-31`
-            }
-            // Check if selectedPeriod is a quarter (YYYYQ# format)
-            else if (selectedPeriod.includes('Q')) {
+            } else if (selectedPeriodType === 'quarterly') {
+                // Quarter format: YYYYQ#
                 const [year, quarter] = selectedPeriod.split('Q')
-                const quarterStartMonth = (parseInt(quarter) - 1) * 3 + 1
-                const quarterEndMonth = parseInt(quarter) * 3
+                const quarterNum = parseInt(quarter)
+                const quarterStartMonth = (quarterNum - 1) * 3 + 1
+                const quarterEndMonth = quarterNum * 3
                 startDate = `${year}-${quarterStartMonth.toString().padStart(2, '0')}-01`
                 const lastDay = new Date(parseInt(year), quarterEndMonth, 0).getDate()
                 endDate = `${year}-${quarterEndMonth.toString().padStart(2, '0')}-${lastDay}`
-            }
-            // Check if selectedPeriod is a month (YYYYMM format)
-            else if (selectedPeriod.length === 6 && /^\d{6}$/.test(selectedPeriod)) {
+            } else if (selectedPeriodType === 'monthly') {
+                // Month format: YYYYMM
                 const year = selectedPeriod.substring(0, 4)
                 const month = selectedPeriod.substring(4, 6)
                 startDate = `${year}-${month}-01`
@@ -240,10 +219,13 @@ const RecordsList = () => {
                 endDate = `${year}-${month}-${lastDay}`
             }
 
-            // Try analytics first, fallback to raw data if needed
+            // Calculate pagination parameters
+            const page = currentPage
+            const pageSizeParam = pageSize
+
+                        // Fetch events with pagination
             let response
             try {
-                console.log('🔍 Trying analytics query first...')
                 response = await engine.query({
                     events: {
                         resource: 'events',
@@ -254,7 +236,9 @@ const RecordsList = () => {
                             startDate: startDate,
                             endDate: endDate,
                             fields: 'event,eventDate,dueDate,dataValues,orgUnit,trackedEntityInstance,enrollment',
-                            paging: false,
+                            page: page,
+                            pageSize: pageSizeParam,
+                            paging: true,
                             includeAllChildren: true
                         }
                     }
@@ -263,7 +247,6 @@ const RecordsList = () => {
                 // If no data, try without date restrictions
                 const events = response?.events?.events || []
                 if (events.length === 0) {
-                    console.log('⚠️ No data with date filter, trying without date restrictions...')
                     response = await engine.query({
                         events: {
                             resource: 'events',
@@ -272,15 +255,16 @@ const RecordsList = () => {
                                 programStage: 'hqJKFmOU6s7',
                                 orgUnit: selectedOrgUnit,
                                 fields: 'event,eventDate,dueDate,dataValues,orgUnit,trackedEntityInstance,enrollment',
-                                paging: false,
+                                page: page,
+                                pageSize: pageSizeParam,
+                                paging: true,
                                 includeAllChildren: true
                             }
                         }
                     })
-                    console.log('📊 Raw data response (no date filter):', response?.events?.events?.length || 0)
                 }
             } catch (error) {
-                console.error('❌ Analytics query failed, trying raw data...', error)
+                console.error('Error fetching events:', error)
                 // Fallback to raw data query
                 response = await engine.query({
                     events: {
@@ -290,7 +274,9 @@ const RecordsList = () => {
                             programStage: 'hqJKFmOU6s7',
                             orgUnit: selectedOrgUnit,
                             fields: 'event,eventDate,dueDate,dataValues,orgUnit,trackedEntityInstance,enrollment',
-                            paging: false,
+                            page: page,
+                            pageSize: pageSizeParam,
+                            paging: true,
                             includeAllChildren: true
                         }
                     }
@@ -428,10 +414,140 @@ const RecordsList = () => {
                 return record
             })
 
+            // Get pagination info from response
+            const pagination = response?.events?.pager || {}
+            let totalRecordsFromAPI = pagination.total || processedRecords.length
+            let totalPagesFromAPI = pagination.pageCount || Math.ceil(totalRecordsFromAPI / pageSize)
+            
+            // Check if this is the last page
+            const isLastPage = pagination.isLastPage || false
+            
+            // If not the last page and we don't have a proper total, estimate it
+            if (!isLastPage && totalRecordsFromAPI <= pageSize) {
+                console.log('⚠️ Not last page but total records is limited, estimating...')
+                // If we're on page 2 and not the last page, assume there are at least 3 pages
+                if (page === 2) {
+                    totalRecordsFromAPI = pageSize * 3 // At least 3 pages
+                    totalPagesFromAPI = 3
+                } else {
+                    // For other pages, assume there are more pages ahead
+                    totalRecordsFromAPI = pageSize * (page + 2) // Current page + at least 2 more
+                    totalPagesFromAPI = page + 2
+                }
+                console.log('📊 Estimated total records:', totalRecordsFromAPI, 'Total pages:', totalPagesFromAPI)
+            }
+            
+            // Always get total count to ensure accurate pagination
+            if (page === 1) {
+                try {
+                    console.log('🔍 Getting total count...')
+                    const countResponse = await engine.query({
+                        events: {
+                            resource: 'events',
+                            params: {
+                                program: 'gmO3xUubvMb',
+                                programStage: 'hqJKFmOU6s7',
+                                orgUnit: selectedOrgUnit,
+                                startDate: startDate,
+                                endDate: endDate,
+                                fields: 'event',
+                                paging: false,
+                                includeAllChildren: true
+                            }
+                        }
+                    })
+                    const allEvents = countResponse?.events?.events || []
+                    totalRecordsFromAPI = allEvents.length
+                    totalPagesFromAPI = Math.ceil(totalRecordsFromAPI / pageSize)
+                    console.log('📊 Total count from separate query:', totalRecordsFromAPI)
+                    
+                    // If the count query also returns limited results, try without date filters
+                    if (allEvents.length <= pageSize) {
+                        console.log('⚠️ Count query also limited, trying without date filters...')
+                        const countResponseNoDate = await engine.query({
+                            events: {
+                                resource: 'events',
+                                params: {
+                                    program: 'gmO3xUubvMb',
+                                    programStage: 'hqJKFmOU6s7',
+                                    orgUnit: selectedOrgUnit,
+                                    fields: 'event',
+                                    paging: false,
+                                    includeAllChildren: true
+                                }
+                            }
+                        })
+                        const allEventsNoDate = countResponseNoDate?.events?.events || []
+                        totalRecordsFromAPI = allEventsNoDate.length
+                        totalPagesFromAPI = Math.ceil(totalRecordsFromAPI / pageSize)
+                        console.log('📊 Total count without date filters:', totalRecordsFromAPI)
+                        
+                        // If still limited, try with a very large page size
+                        if (allEventsNoDate.length <= pageSize) {
+                            console.log('⚠️ Still limited, trying with large page size...')
+                            const countResponseLarge = await engine.query({
+                                events: {
+                                    resource: 'events',
+                                    params: {
+                                        program: 'gmO3xUubvMb',
+                                        programStage: 'hqJKFmOU6s7',
+                                        orgUnit: selectedOrgUnit,
+                                        fields: 'event',
+                                        pageSize: 10000, // Try with a very large page size
+                                        paging: true,
+                                        includeAllChildren: true
+                                    }
+                                }
+                            })
+                            const allEventsLarge = countResponseLarge?.events?.events || []
+                            const pagerInfo = countResponseLarge?.events?.pager || {}
+                            totalRecordsFromAPI = pagerInfo.total || allEventsLarge.length
+                            totalPagesFromAPI = Math.ceil(totalRecordsFromAPI / pageSize)
+                            console.log('📊 Total count with large page size:', totalRecordsFromAPI, 'Pager info:', pagerInfo)
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to get total count:', error)
+                    // Fallback: if we can't get total count, assume there are more records
+                    if (processedRecords.length === pageSize) {
+                        totalRecordsFromAPI = pageSize * 10 // Assume at least 10 pages
+                        totalPagesFromAPI = 10
+                        console.log('📊 Using fallback count:', totalRecordsFromAPI)
+                    }
+                }
+            }
+            
+            console.log('📊 Full API Response:', response)
+            console.log('📊 Pagination info from API:', { 
+                pagination,
+                totalRecords: totalRecordsFromAPI, 
+                totalPages: totalPagesFromAPI,
+                currentPage: page,
+                pageSize: pageSizeParam,
+                recordsInThisPage: processedRecords.length,
+                hasPager: !!response?.events?.pager,
+                isLastPage: isLastPage
+            })
+            
+            // Ignore stale responses if the user changed pages mid-flight
+            if (requestedPage !== latestPageRequestedRef.current) {
+                return
+            }
+
             setRecords(processedRecords)
+            setTotalRecords(totalRecordsFromAPI)
+            setTotalPages(totalPagesFromAPI)
+            setFilteredRecords(processedRecords) // For this page only
+            setPaginatedRecords(processedRecords) // This page's data
+            // Compute display range from server pager + actual page data length
+            const start = (requestedPage - 1) * pageSizeParam + 1
+            const end = Math.min(start + processedRecords.length - 1, totalRecordsFromAPI)
+            setDisplayStartIndex(start)
+            setDisplayEndIndex(end)
+            
             showToast({
                 title: 'Success',
-                description: `Loaded ${processedRecords.length} records`,
+                description: `Loaded ${processedRecords.length} records (Page ${page} of ${totalPagesFromAPI})`,
                 variant: 'default'
             })
         } catch (error) {
@@ -444,14 +560,34 @@ const RecordsList = () => {
         } finally {
             setLoading(false)
         }
-    }, [engine, selectedOrgUnit, selectedPeriod, showToast])
+    }, [engine, selectedOrgUnit, selectedPeriodType, selectedPeriod, currentPage, pageSize, showToast])
 
-    // Load records when period or org unit changes
+    // Clear records when filters change (but don't load new data automatically)
     useEffect(() => {
-        if (selectedOrgUnit && selectedPeriod) {
+        setRecords([])
+        setTotalRecords(0)
+        setTotalPages(1)
+        // Don't set currentPage to 1 here to avoid triggering the pagination useEffect
+        // The pagination useEffect will handle fetching when currentPage is already 1
+    }, [selectedOrgUnit, selectedPeriod])
+
+    // Clear period selections when organization changes
+    useEffect(() => {
+        if (!selectedOrgUnit) {
+            setSelectedPeriodType('')
+            setSelectedPeriod('')
+            setSelectedYear('')
+            setSelectedQuarter(null)
+            setSelectedMonth(null)
+        }
+    }, [selectedOrgUnit])
+
+    // Fetch records when pagination changes
+    useEffect(() => {
+        if (selectedOrgUnit && selectedPeriod && currentPage > 0) {
             fetchRecords()
         }
-    }, [selectedOrgUnit, selectedPeriod, fetchRecords])
+    }, [currentPage, fetchRecords])
 
     const getRiskLevelColor = (riskLevel) => {
         switch (riskLevel?.toLowerCase()) {
@@ -464,19 +600,156 @@ const RecordsList = () => {
         }
     }
 
+    // Pagination helper functions
+    const goToPage = (page) => {
+        console.log('🔍 goToPage called:', { page, totalPages, currentPage })
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page)
+        } else {
+            console.log('❌ Page navigation blocked:', { page, totalPages })
+        }
+    }
+
+    const goToFirstPage = () => goToPage(1)
+    const goToLastPage = () => goToPage(totalPages)
+    const goToNextPage = () => goToPage(currentPage + 1)
+    const goToPreviousPage = () => goToPage(currentPage - 1)
+
+    const getPageNumbers = () => {
+        const pages = []
+        const maxVisiblePages = isSmallScreen ? 5 : 10
+        
+        let startPage = Math.max(1, currentPage - 2)
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
+        
+        if (endPage - startPage < maxVisiblePages - 1) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1)
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            pages.push(i)
+        }
+        
+        return pages
+    }
+
+
+
+    const getDisplayRange = () => {
+        if (displayStartIndex && displayEndIndex) {
+            return { startIndex: displayStartIndex, endIndex: displayEndIndex }
+        }
+        const startIndex = (currentPage - 1) * pageSize + 1
+        const endIndex = Math.min(currentPage * pageSize, totalRecords)
+        return { startIndex, endIndex }
+    }
+
     const formatDate = (dateString) => {
         if (!dateString) return '-'
         return new Date(dateString).toLocaleDateString()
     }
 
     const handleRefresh = () => {
+        setCurrentPage(1) // Reset to first page when manually loading
         fetchRecords()
     }
+
+    const clearFilters = () => {
+        setSelectedPeriod('')
+        setSelectedYear(new Date().getFullYear())
+        setSelectedQuarter(null)
+        setSelectedMonth(null)
+    }
+
+    // Picker handlers
+    const handleYearSelect = (year) => {
+        setSelectedYear(year)
+        if (selectedPeriodType === 'yearly') {
+            setSelectedPeriod(year.toString())
+        } else if (selectedPeriodType === 'quarterly' && selectedQuarter) {
+            setSelectedPeriod(`${year}Q${selectedQuarter}`)
+        } else if (selectedPeriodType === 'monthly' && selectedMonth) {
+            setSelectedPeriod(`${year}${selectedMonth.toString().padStart(2, '0')}`)
+        }
+    }
+
+    const handleQuarterSelect = (quarter) => {
+        setSelectedQuarter(quarter)
+        setSelectedPeriod(`${selectedYear}Q${quarter}`)
+    }
+
+    const handleMonthSelect = (month) => {
+        setSelectedMonth(month)
+        setSelectedPeriod(`${selectedYear}${month.toString().padStart(2, '0')}`)
+    }
+
+    const getPeriodDisplay = () => {
+        if (!selectedPeriodType) {
+            return 'Select period type'
+        }
+        
+        if (selectedPeriodType === 'yearly') {
+            return selectedYear ? selectedYear.toString() : 'Select year'
+        } else if (selectedPeriodType === 'quarterly') {
+            return selectedQuarter ? `Q${selectedQuarter} ${selectedYear}` : 'Select quarter'
+        } else if (selectedPeriodType === 'monthly') {
+            if (selectedMonth) {
+                const monthName = new Date(selectedYear, selectedMonth - 1).toLocaleDateString('en-US', { month: 'long' })
+                return `${monthName} ${selectedYear}`
+            }
+            return 'Select month'
+        }
+        return 'Select period'
+    }
+
+    // Period availability: from 2020 up to current year/quarter/month
+    const today = new Date()
+    const currentYearVal = today.getFullYear()
+    const currentQuarterVal = Math.ceil((today.getMonth() + 1) / 3)
+    const currentMonthVal = today.getMonth() + 1
+    const MIN_YEAR = 2020
+
+    const isYearAvailable = (year) => {
+        return year >= MIN_YEAR && year <= currentYearVal
+    }
+
+    const getAvailableQuartersForYear = (year) => {
+        if (year < MIN_YEAR) return []
+        if (year < currentYearVal) return [1,2,3,4]
+        if (year > currentYearVal) return []
+        return [1,2,3,4].filter(q => q <= currentQuarterVal)
+    }
+
+    const getAvailableMonthsForYear = (year) => {
+        if (year < MIN_YEAR) return []
+        if (year < currentYearVal) return [1,2,3,4,5,6,7,8,9,10,11,12]
+        if (year > currentYearVal) return []
+        return Array.from({ length: currentMonthVal }, (_, i) => i + 1)
+    }
+
+    const getFilterPeriodDisplay = () => {
+        if (!selectedPeriod) return 'All periods'
+        
+        if (selectedPeriodType === 'yearly') {
+            return selectedPeriod
+        } else if (selectedPeriodType === 'quarterly') {
+            const [year, quarter] = selectedPeriod.split('Q')
+            return `Q${quarter} ${year}`
+        } else if (selectedPeriodType === 'monthly') {
+            const year = selectedPeriod.substring(0, 4)
+            const month = selectedPeriod.substring(4, 6)
+            const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('en-US', { month: 'long' })
+            return `${monthName} ${year}`
+        }
+        return 'All periods'
+    }
+
+
 
     const handleExport = () => {
         const csvContent = [
             ['System ID', 'UUIC', 'Family Name', 'Last Name', 'Sex', 'Age', 'Province', 'District', 'Risk Level', 'Event Date'],
-            ...filteredRecords.map(record => [
+            ...records.map(record => [
                 record.systemId || '',
                 record.uuic || '',
                 record.familyName || '',
@@ -494,7 +767,8 @@ const RecordsList = () => {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `sti-records-${selectedPeriod}.csv`
+                    const periodLabel = getFilterPeriodDisplay().replace(/\s+/g, '-').toLowerCase()
+            a.download = `sti-records-${periodLabel}.csv`
         a.click()
         window.URL.revokeObjectURL(url)
 
@@ -505,239 +779,188 @@ const RecordsList = () => {
         })
     }
 
+    // Delete an event record
+    const [deletingId, setDeletingId] = useState(null)
+    const [bulkDeleting, setBulkDeleting] = useState(false)
+    
+    const handleDeleteRecord = async (record) => {
+        if (!record?.id) return
+        const confirmDelete = window.confirm('Are you sure you want to delete this record?')
+        if (!confirmDelete) return
+        try {
+            setDeletingId(record.id)
+            await engine.mutate({
+                type: 'delete',
+                resource: `events/${record.id}`
+            })
+            
+            // Don't update local state immediately - let the refresh handle it
+            // This ensures consistency with server data
+            
+            // Always refresh to get updated data from server
+            setTimeout(() => {
+                setLoading(true) // Show loading state during refresh
+                fetchRecords()
+            }, 100) // Small delay to ensure state updates are processed
+            
+        } catch (error) {
+            console.error('Failed to delete record:', error)
+            alert('Failed to delete record')
+        } finally {
+            setDeletingId(null)
+        }
+    }
+
+    const handleBulkDelete = async (selectedRecords) => {
+        console.log('handleBulkDelete called:', { selectedRecords })
+        if (!selectedRecords || selectedRecords.length === 0) return
+        
+        try {
+            setBulkDeleting(true)
+            
+            let successCount = 0
+            let errorCount = 0
+            const selectedIds = selectedRecords.map(record => record.id)
+            
+            // Delete records one by one to avoid overwhelming the API
+            for (const record of selectedRecords) {
+                try {
+                    await engine.mutate({
+                        type: 'delete',
+                        resource: `events/${record.id}`
+                    })
+                    successCount++
+                    
+                    // Don't update local state immediately - let the refresh handle it
+                    // This ensures consistency with server data
+                    
+                } catch (error) {
+                    console.error(`Failed to delete record ${record.id}:`, error)
+                    errorCount++
+                }
+            }
+            
+            // Handle pagination after bulk delete
+            if (successCount > 0) {
+                // Always refresh to get updated data from server
+                setTimeout(() => {
+                    setLoading(true) // Show loading state during refresh
+                    fetchRecords()
+                }, 100) // Small delay to ensure state updates are processed
+            }
+            
+            // Show appropriate feedback
+            if (errorCount === 0) {
+                showToast({
+                    title: 'Bulk Delete Successful',
+                    description: `Successfully deleted ${successCount} record(s)`,
+                    variant: 'default'
+                })
+            } else if (successCount === 0) {
+                showToast({
+                    title: 'Bulk Delete Failed',
+                    description: `Failed to delete ${errorCount} record(s). Please try again.`,
+                    variant: 'error'
+                })
+            } else {
+                showToast({
+                    title: 'Bulk Delete Partially Completed',
+                    description: `Deleted ${successCount} record(s), ${errorCount} failed`,
+                    variant: 'default'
+                })
+            }
+            
+        } catch (error) {
+            console.error('Bulk delete error:', error)
+            showToast({
+                title: 'Error',
+                description: 'Bulk delete operation failed. Please try again.',
+                variant: 'error'
+            })
+        } finally {
+            setBulkDeleting(false)
+        }
+    }
+
     return (
-        <div className="min-h-screen py-4 sm:py-8">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-                {/* Header */}
-                <div className="text-center space-y-4">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-gray-100">
-                        <FileText className="w-6 h-6 text-gray-600" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-semibold text-gray-900">Records List</h1>
-                        <p className="text-gray-500 text-sm mt-1">View and manage all screening records</p>
-                    </div>
-                </div>
+        <div className="min-h-screen bg-gray-50">
+            <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+            
+                <Filters
+                    orgUnits={orgUnits}
+                    selectedOrgUnit={selectedOrgUnit}
+                    setSelectedOrgUnit={setSelectedOrgUnit}
+                    selectedPeriodType={selectedPeriodType}
+                    setSelectedPeriodType={setSelectedPeriodType}
+                    selectedYear={selectedYear}
+                    selectedQuarter={selectedQuarter}
+                    selectedMonth={selectedMonth}
+                    showYearPicker={showYearPicker}
+                    showQuarterPicker={showQuarterPicker}
+                    showMonthPicker={showMonthPicker}
+                    selectedPeriod={selectedPeriod}
+                    onYearSelect={handleYearSelect}
+                    onQuarterSelect={handleQuarterSelect}
+                    onMonthSelect={handleMonthSelect}
+                    getPeriodDisplay={getPeriodDisplay}
+                    onToggleYearPicker={() => { setShowYearPicker(!showYearPicker); setShowQuarterPicker(false); setShowMonthPicker(false) }}
+                    onToggleQuarterPicker={() => { setShowQuarterPicker(!showQuarterPicker); setShowYearPicker(false); setShowMonthPicker(false) }}
+                    onToggleMonthPicker={() => { setShowMonthPicker(!showMonthPicker); setShowYearPicker(false); setShowQuarterPicker(false) }}
+                    onClosePickers={() => { setShowYearPicker(false); setShowQuarterPicker(false); setShowMonthPicker(false) }}
+                    onRun={handleRefresh}
+                    isYearAvailable={isYearAvailable}
+                    getAvailableQuartersForYear={getAvailableQuartersForYear}
+                    getAvailableMonthsForYear={getAvailableMonthsForYear}
+                    loading={loading}
+                />
 
-                {/* Filters */}
-                <Card className="bg-white border border-gray-200 rounded-lg shadow-sm">
-                    <CardHeader className="pb-4">
-                        <CardTitle className="flex items-center space-x-2">
-                            <FiFilter className="w-5 h-5 text-gray-600" />
-                            <span className="text-lg font-medium text-gray-900">Filters</span>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {/* Search Bar */}
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <FiSearch className="w-4 h-4 text-gray-400" />
-                            </div>
-                            <Input
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Search by patient name, ID, or any field..."
-                                className="pl-10 pr-4 h-10 bg-white border border-gray-300 rounded-md focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
-                            />
-                        </div>
 
-                        {/* Filter Controls */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            {/* Time Period Selector */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
-                                    <FiCalendar className="w-4 h-4 text-gray-500" />
-                                    <span>Time Period</span>
-                                </label>
-                                
-                                {/* Period Type Tabs */}
-                                <div className="flex bg-gray-100 rounded-md p-1">
-                                    <button
-                                        onClick={() => setPeriodType('year')}
-                                        className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                                            periodType === 'year' 
-                                                ? 'bg-white text-gray-900 shadow-sm' 
-                                                : 'text-gray-600 hover:text-gray-900'
-                                        }`}
-                                    >
-                                        Year
-                                    </button>
-                                    <button
-                                        onClick={() => setPeriodType('quarter')}
-                                        className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                                            periodType === 'quarter' 
-                                                ? 'bg-white text-gray-900 shadow-sm' 
-                                                : 'text-gray-600 hover:text-gray-900'
-                                        }`}
-                                    >
-                                        Quarter
-                                    </button>
-                                    <button
-                                        onClick={() => setPeriodType('month')}
-                                        className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                                            periodType === 'month' 
-                                                ? 'bg-white text-gray-900 shadow-sm' 
-                                                : 'text-gray-600 hover:text-gray-900'
-                                        }`}
-                                    >
-                                        Monthly
-                                    </button>
-                                </div>
-                                
-                                {/* Period Selection */}
-                                <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                                    <SelectTrigger className="h-10 bg-white border border-gray-300 rounded-md focus:border-gray-400 focus:ring-1 focus:ring-gray-400">
-                                        <SelectValue placeholder={`Select ${periodType}`} />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white border border-gray-200 rounded-md max-h-60 w-64 shadow-lg">
-                                        {periods.filter(p => p.type === periodType).map(period => (
-                                            <SelectItem key={period.value} value={period.value} className="hover:bg-gray-50">
-                                                {period.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Organization Unit Selector */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
-                                    <FiMapPin className="w-4 h-4 text-gray-500" />
-                                    <span>Location</span>
-                                </label>
-                                <Select value={selectedOrgUnit} onValueChange={setSelectedOrgUnit}>
-                                    <SelectTrigger className="h-10 bg-white border border-gray-300 rounded-md focus:border-gray-400 focus:ring-1 focus:ring-gray-400">
-                                        <SelectValue placeholder="Select organization unit" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white border border-gray-200 rounded-md max-h-60 shadow-lg">
-                                        {orgUnits.map(ou => (
-                                            <SelectItem key={ou.id} value={ou.id} className="hover:bg-gray-50">
-                                                {ou.displayName || ou.id}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
-                                    <Activity className="w-4 h-4 text-gray-500" />
-                                    <span>Actions</span>
-                                </label>
-                                <div className="flex space-x-2">
-                                    <Button
-                                        onClick={handleRefresh}
-                                        disabled={loading}
-                                        variant="outline"
-                                        className="flex-1 h-10 border border-gray-300 hover:bg-gray-50"
-                                    >
-                                        <FiRefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                                        Refresh
-                                    </Button>
-                                    <Button
-                                        onClick={handleExport}
-                                        disabled={filteredRecords.length === 0}
-                                        variant="outline"
-                                        className="flex-1 h-10 border border-gray-300 hover:bg-gray-50"
-                                    >
-                                        <FiDownload className="w-4 h-4 mr-2" />
-                                        Export
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
 
                 {/* Records Table */}
                 <Card className="bg-white border border-gray-200 rounded-lg shadow-sm">
-                    <CardHeader className="pb-4">
-                        <CardTitle className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                                <FiEye className="w-5 h-5 text-gray-600" />
-                                <span className="text-lg font-medium text-gray-900">Screening Records</span>
-                            </div>
-                            <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-                                {filteredRecords.length} Records
-                            </Badge>
+                    <CardHeader className="pb-4 border-b border-gray-100">
+                        <CardTitle>
+                            <HeaderBar
+                                loading={loading}
+                                totalRecords={totalRecords}
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                orgUnits={orgUnits}
+                                selectedOrgUnit={selectedOrgUnit}
+                                periodLabel={getFilterPeriodDisplay()}
+                            />
                         </CardTitle>
                     </CardHeader>
+                    
                     <CardContent className="p-0">
-                        {loading ? (
-                            <div className="flex items-center justify-center py-12">
-                                <div className="text-center space-y-3">
-                                    <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mx-auto"></div>
-                                    <p className="text-sm text-gray-600">Loading records...</p>
-                                </div>
-                            </div>
-                        ) : filteredRecords.length === 0 ? (
-                            <div className="text-center py-12">
-                                <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">No Records Found</h3>
-                                <p className="text-gray-600 mb-4">Try adjusting your filters or search criteria.</p>
-                                <Button 
-                                    onClick={handleRefresh}
-                                    variant="outline"
-                                    className="border border-gray-300 hover:bg-gray-50"
-                                >
-                                    <FiRefreshCw className="w-4 h-4 mr-2" />
-                                    Refresh
-                                </Button>
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead>
-                                        <tr className="border-b border-gray-200 bg-gray-50">
-                                            <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Patient ID</th>
-                                            <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Name</th>
-                                            <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Gender</th>
-                                            <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Age</th>
-                                            <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Location</th>
-                                            <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Risk Level</th>
-                                            <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {filteredRecords.map((record, index) => (
-                                            <tr key={record.id || index} className="hover:bg-gray-50">
-                                                <td className="py-3 px-4">
-                                                    <div>
-                                                        <div className="font-medium text-gray-900">{record.systemId || '-'}</div>
-                                                        <div className="text-xs text-gray-500">{record.uuic || 'No UUIC'}</div>
-                                                    </div>
-                                                </td>
-                                                <td className="py-3 px-4">
-                                                    <div className="font-medium text-gray-900">
-                                                        {record.familyName || ''} {record.lastName || ''}
-                                                    </div>
-                                                </td>
-                                                <td className="py-3 px-4">
-                                                    <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-                                                        {record.sex || '-'}
-                                                    </Badge>
-                                                </td>
-                                                <td className="py-3 px-4 text-gray-700">{record.age || '-'}</td>
-                                                <td className="py-3 px-4">
-                                                    <div className="text-sm text-gray-700">{record.province || '-'}</div>
-                                                    <div className="text-xs text-gray-500">{record.district || '-'}</div>
-                                                </td>
-                                                <td className="py-3 px-4">
-                                                    <Badge variant="outline" className={getRiskLevelColor(record.riskScreeningResult)}>
-                                                        {record.riskScreeningResult || record.riskLevel || 'Unknown'}
-                                                    </Badge>
-                                                </td>
-                                                <td className="py-3 px-4 text-sm text-gray-600">
-                                                    {formatDate(record.eventDate)}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
+                        <Table
+                            loading={loading}
+                            totalRecords={totalRecords}
+                            records={records}
+                            getRiskLevelColor={getRiskLevelColor}
+                            onDelete={handleDeleteRecord}
+                            deletingId={deletingId}
+                            onBulkDelete={handleBulkDelete}
+                            bulkDeleting={bulkDeleting}
+                        />
                     </CardContent>
+                    
+                    {/* Enhanced Pagination Controls */}
+                    {totalRecords > 0 && totalPages > 1 && (
+                        <div className="border-t border-gray-200 bg-gray-50/50 px-3 sm:px-6 py-3 sm:py-4">
+                            <div className="flex items-center justify-end">
+                                <Pagination
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    onFirst={goToFirstPage}
+                                    onPrev={goToPreviousPage}
+                                    onNext={goToNextPage}
+                                    onLast={goToLastPage}
+                                    goToPage={goToPage}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </Card>
             </div>
         </div>

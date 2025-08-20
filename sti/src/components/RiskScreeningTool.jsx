@@ -90,6 +90,8 @@ const RiskScreeningTool = () => {
     const [programStageDetails, setProgramStageDetails] = useState(null)
     const [fieldMappings, setFieldMappings] = useState({})
     const [formOptions, setFormOptions] = useState({})
+    const [dataElementOptionsById, setDataElementOptionsById] = useState({})
+    const [programTeAttributes, setProgramTeAttributes] = useState({})
     
     const engine = useDataEngine()
     const { showToast } = useToast()
@@ -109,12 +111,14 @@ const RiskScreeningTool = () => {
         fetchProgramStageDetails()
         fetchProgramStageData()
         fetchFormOptions()
+        fetchProgramTeiAttributes()
     }, [])
 
     const fetchFormOptions = useCallback(async () => {
         try {
-            const { formFieldOptions } = await fetchFormData(programStageId)
+            const { formFieldOptions, dataElementOptions } = await fetchFormData(programStageId)
             setFormOptions(formFieldOptions)
+            setDataElementOptionsById(dataElementOptions || {})
         } catch (error) {
             console.error('Error fetching form options:', error)
         }
@@ -250,6 +254,46 @@ const RiskScreeningTool = () => {
         }
     }, [engine, showToast])
 
+    // Load TEI attributes from Program (not just trackedEntityType)
+    const fetchProgramTeiAttributes = useCallback(async () => {
+        try {
+            const resp = await engine.query({
+                program: {
+                    resource: 'programs',
+                    id: programId,
+                    params: {
+                        fields: 'id,name,programTrackedEntityAttributes[mandatory,trackedEntityAttribute[id,name,code,valueType,unique]]'
+                    }
+                }
+            })
+
+            const pteas = resp?.program?.programTrackedEntityAttributes || []
+            const dynamicMap = {}
+
+            pteas.forEach(ptea => {
+                const tea = ptea.trackedEntityAttribute
+                if (!tea?.id || !tea?.name) return
+                const n = (tea.name || '').toLowerCase()
+
+                if (n.includes('system') && n.includes('id')) dynamicMap.systemId = tea.id
+                else if (n.includes('uuic')) dynamicMap.uuic = tea.id
+                else if ((n.includes('family') && n.includes('name')) || n.includes('fname')) dynamicMap.familyName = tea.id
+                else if ((n.includes('last') && n.includes('name')) || n.includes('lname')) dynamicMap.lastName = tea.id
+                else if (n === 'sex' || (n.includes('sex') && !n.includes('birth'))) dynamicMap.sex = tea.id
+                else if (n.includes('date of birth') || n === 'dob') dynamicMap.dateOfBirth = tea.id
+                else if (n.includes('province')) dynamicMap.province = tea.id
+                else if (n === 'od' || n.includes('operational district')) dynamicMap.od = tea.id
+                else if (n.includes('district')) dynamicMap.district = tea.id
+                else if (n.includes('commune')) dynamicMap.commune = tea.id
+            })
+
+            setProgramTeAttributes(dynamicMap)
+            console.log('[PROGRAM TE ATTR] Loaded from program:', dynamicMap)
+        } catch (error) {
+            console.error('Failed to load program TEI attributes:', error)
+        }
+    }, [engine])
+
     const updateFormData = useCallback((newData) => {
         setFormData(prev => ({ ...prev, ...newData }))
     }, [])
@@ -342,10 +386,12 @@ const RiskScreeningTool = () => {
     }
 
     const simpleTest = async () => {
-        if (!selectedOrgUnit) {
+        // Ensure we have an org unit (fallback to first available level-4 OU)
+        const orgUnitId = selectedOrgUnit || orgUnits[0]?.id
+        if (!orgUnitId) {
             showToast({
                 title: 'Validation Error',
-                description: 'Please select an organization unit',
+                description: 'No organization unit available. Please select one first.',
                 variant: 'error'
             })
             return
@@ -355,7 +401,7 @@ const RiskScreeningTool = () => {
         try {
             const simpleTei = {
                 trackedEntityType: config.program.trackedEntityType,
-                orgUnit: selectedOrgUnit,
+                orgUnit: orgUnitId,
                 attributes: [
                     { attribute: config.mapping.trackedEntityAttributes.System_ID, value: `SIMPLE_${Date.now()}` },
                     { attribute: config.mapping.trackedEntityAttributes.UUIC, value: `SIMPLE_UUIC_${Date.now()}` },
@@ -369,29 +415,46 @@ const RiskScreeningTool = () => {
                     { attribute: config.mapping.trackedEntityAttributes.Commune, value: 'Test Commune' }
                 ]
             }
-            
+
+            console.log('Simple test TEI payload:', simpleTei)
+
             const result = await engine.mutate({
                 resource: 'trackedEntityInstances',
                 type: 'create',
                 data: { trackedEntityInstances: [simpleTei] }
             })
-            
-            if (result.response?.importSummaries?.[0]?.reference) {
+
+            console.log('Simple test TEI response:', result)
+
+            const summary = result?.response?.importSummaries?.[0]
+            if (summary?.reference) {
                 showToast({
                     title: 'Simple Test Success',
-                    description: `Basic TEI created: ${result.response.importSummaries[0].reference}`,
+                    description: `TEI created: ${summary.reference}`,
                     variant: 'success'
                 })
-            } else {
-                throw new Error(`Simple test failed: ${result.response?.importSummaries?.[0]?.description || 'Unknown error'}`)
+                return
             }
+
+            const conflicts = summary?.conflicts?.map(c => `${c.object}: ${c.value}`).join('; ') || ''
+            const description = summary?.description || 'Unknown error'
+            const details = [description, conflicts].filter(Boolean).join(' | ')
+            throw new Error(details)
         } catch (error) {
+            // Try to surface full server response if available
+            const serverData = error?.response?.data
+            const serverSummaries = serverData?.importSummaries
+            let details = error.message
+            if (serverSummaries && serverSummaries.length > 0) {
+                const s = serverSummaries[0]
+                const conflicts = s?.conflicts?.map(c => `${c.object}: ${c.value}`).join('; ') || ''
+                const description = s?.description || ''
+                const composed = [description, conflicts].filter(Boolean).join(' | ')
+                if (composed) details = composed
+                console.error('Simple test server import summary:', s)
+            }
             console.error('Simple test failed:', error)
-            showToast({
-                title: 'Simple Test Failed',
-                description: `Error: ${error.message}`,
-                variant: 'error'
-            })
+            showToast({ title: 'Simple Test Failed', description: details, variant: 'error' })
         } finally {
             setLoading(false)
         }
@@ -418,7 +481,8 @@ const RiskScreeningTool = () => {
     }
 
     const handleSave = async () => {
-        if (!selectedOrgUnit) {
+        const orgUnitId = selectedOrgUnit || orgUnits[0]?.id
+        if (!orgUnitId) {
             showToast({
                 title: 'Validation Error',
                 description: 'Please select an organization unit',
@@ -432,27 +496,133 @@ const RiskScreeningTool = () => {
             const riskData = calculateRiskScore()
             const finalData = { ...formData, ...riskData }
             
-            finalData.systemId = `RISK_${Date.now()}_${Math.floor(Math.random() * 1000)}`
-            finalData.uuic = `UUIC_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+            // Generate unique IDs
+            finalData.systemId = `RISK_${Date.now()}_${Math.floor(Math.random() * 10000)}`
+            finalData.uuic = `UUIC_${Date.now()}_${Math.floor(Math.random() * 10000)}`
 
-            // Simplified save logic
+            console.log('[SAVE] Org unit for DHIS2:', orgUnitId)
+            console.log('[SAVE] Final data:', finalData)
+
+            // 1) Create TEI
+            const teiAttributes = prepareTrackedEntityAttributes(finalData)
+            const teiPayload = {
+                trackedEntityType: config.program.trackedEntityType,
+                orgUnit: orgUnitId,
+                attributes: teiAttributes
+            }
+            console.log('[SAVE] TEI payload:', teiPayload)
+            const teiRes = await engine.mutate({
+                resource: 'trackedEntityInstances',
+                type: 'create',
+                data: { trackedEntityInstances: [teiPayload] }
+            })
+            console.log('[SAVE] TEI response:', teiRes)
+            const teiSummary = teiRes?.response?.importSummaries?.[0]
+            const teiId = teiSummary?.reference
+            if (!teiId) {
+                const conflicts = teiSummary?.conflicts?.map(c => `${c.object}: ${c.value}`).join('; ')
+                const description = teiSummary?.description || 'Failed to create TEI'
+                throw new Error([description, conflicts].filter(Boolean).join(' | '))
+            }
+
+            // 2) Enroll
+            const enrollment = {
+                trackedEntityInstance: teiId,
+                program: config.program.id,
+                orgUnit: orgUnitId,
+                enrollmentDate: new Date().toISOString().split('T')[0],
+                incidentDate: new Date().toISOString().split('T')[0]
+            }
+            console.log('[SAVE] Enrollment payload:', enrollment)
+            const enrRes = await engine.mutate({
+                resource: 'enrollments',
+                type: 'create',
+                data: { enrollments: [enrollment] }
+            })
+            console.log('[SAVE] Enrollment response:', enrRes)
+            const enrSummary = enrRes?.response?.importSummaries?.[0]
+            const enrollmentId = enrSummary?.reference
+            if (!enrollmentId) {
+                const conflicts = enrSummary?.conflicts?.map(c => `${c.object}: ${c.value}`).join('; ')
+                const description = enrSummary?.description || 'Failed to create enrollment'
+                throw new Error([description, conflicts].filter(Boolean).join(' | '))
+            }
+
+            // 3) Event
+            if (!fieldMappings || Object.keys(fieldMappings).length === 0) {
+                throw new Error('Field mappings not loaded. Please refresh the page and try again.')
+            }
+            const dataValues = []
+            Object.entries(fieldMappings).forEach(([formField, mapping]) => {
+                const deId = mapping.id
+                const raw = finalData[formField]
+                if (raw === undefined || raw === '') return
+
+                // Try to normalize value based on element type
+                const options = dataElementOptionsById[deId] || []
+                let value = raw
+
+                // TRUE_ONLY: include only if truthy
+                if ((mapping.valueType === 'TRUE_ONLY' || mapping.valueType === 'BOOLEAN') && typeof raw === 'string') {
+                    const v = raw.toLowerCase()
+                    if (mapping.valueType === 'TRUE_ONLY') {
+                        if (v === 'yes' || v === 'true') value = 'true'; else return
+                    } else {
+                        value = (v === 'yes' || v === 'true') ? 'true' : 'false'
+                    }
+                }
+
+                // Option sets: map label to option code if options present
+                if (options.length > 0) {
+                    const lower = String(raw).toLowerCase()
+                    const match = options.find(o => o.code?.toLowerCase() === lower || o.name?.toLowerCase() === lower)
+                    if (match?.code) value = match.code
+                }
+
+                dataValues.push({ dataElement: deId, value: String(value) })
+            })
+            const eventDate = new Date().toISOString().split('T')[0]
+            const eventPayload = {
+                trackedEntityInstance: teiId,
+                program: config.program.id,
+                programStage: config.program.stageId,
+                orgUnit: orgUnitId,
+                enrollment: enrollmentId,
+                eventDate,
+                status: 'COMPLETED',
+                dataValues
+            }
+            console.log('[SAVE] Event payload:', eventPayload)
+            const evtRes = await engine.mutate({
+                resource: 'events',
+                type: 'create',
+                data: { events: [eventPayload] }
+            })
+            console.log('[SAVE] Event response:', evtRes)
+            const evtSummary = evtRes?.response?.importSummaries?.[0]
+            const eventId = evtSummary?.reference
+            if (!eventId) {
+                const conflicts = evtSummary?.conflicts?.map(c => `${c.object}: ${c.value}`).join('; ')
+                const description = evtSummary?.description || 'Failed to create event'
+                throw new Error([description, conflicts].filter(Boolean).join(' | '))
+            }
+
+            // Save to local list for UI
             const newRecord = {
                 id: Date.now(),
+                teiId,
+                enrollmentId,
+                eventId,
                 ...finalData,
-                orgUnit: selectedOrgUnit,
+                orgUnit: orgUnitId,
+                eventDate,
                 createdAt: new Date().toISOString()
             }
-            
             setSavedRecords(prev => [newRecord, ...prev])
-            setStatus({ type: 'success', message: 'Risk screening saved successfully!' })
-            
-            showToast({
-                title: 'Success',
-                description: 'Risk screening saved successfully',
-                variant: 'success'
-            })
-            
-            // Reset form
+            setStatus({ type: 'success', message: 'Saved to DHIS2' })
+            showToast({ title: 'Success', description: `Saved! TEI: ${teiId}`, variant: 'success' })
+
+            // Reset form (keep org unit)
             setFormData({
                 systemId: '', uuic: '', familyName: '', lastName: '', sex: '', dateOfBirth: '',
                 province: '', od: '', district: '', commune: '', sexAtBirth: '', genderIdentity: '',
@@ -465,16 +635,11 @@ const RiskScreeningTool = () => {
                 riskScreeningScore: 0, noneOfAbove: '', everOnPrep: '', riskScore: 0,
                 riskLevel: '', riskFactors: [], recommendations: []
             })
-            setSelectedOrgUnit('')
             setCurrentStep(1)
         } catch (error) {
-            console.error('Error saving:', error)
-            setStatus({ type: 'error', message: `Failed to save: ${error.message}` })
-            showToast({
-                title: 'Error',
-                description: 'Failed to save risk screening',
-                variant: 'error'
-            })
+            console.error('[SAVE] Failed:', error)
+            setStatus({ type: 'error', message: error.message })
+            showToast({ title: 'Error', description: error.message, variant: 'error' })
         } finally {
             setLoading(false)
         }
@@ -482,28 +647,32 @@ const RiskScreeningTool = () => {
 
     const prepareTrackedEntityAttributes = (formData) => {
         const attributes = []
-        const attributeMappings = {
-            systemId: config.mapping.trackedEntityAttributes.System_ID,
-            uuic: config.mapping.trackedEntityAttributes.UUIC,
-            familyName: config.mapping.trackedEntityAttributes.Family_Name,
-            lastName: config.mapping.trackedEntityAttributes.Last_Name,
-            sex: config.mapping.trackedEntityAttributes.Sex,
-            dateOfBirth: config.mapping.trackedEntityAttributes.DOB,
-            province: config.mapping.trackedEntityAttributes.Province,
-            od: config.mapping.trackedEntityAttributes.OD,
-            district: config.mapping.trackedEntityAttributes.District,
-            commune: config.mapping.trackedEntityAttributes.Commune
-        }
-        
+        // Prefer program-based TE attribute IDs; fall back to config mapping if not available
+        const attributeMappings = Object.keys(programTeAttributes).length > 0
+            ? programTeAttributes
+            : {
+                systemId: config.mapping.trackedEntityAttributes.System_ID,
+                uuic: config.mapping.trackedEntityAttributes.UUIC,
+                familyName: config.mapping.trackedEntityAttributes.Family_Name,
+                lastName: config.mapping.trackedEntityAttributes.Last_Name,
+                sex: config.mapping.trackedEntityAttributes.Sex,
+                dateOfBirth: config.mapping.trackedEntityAttributes.DOB,
+                province: config.mapping.trackedEntityAttributes.Province,
+                od: config.mapping.trackedEntityAttributes.OD,
+                district: config.mapping.trackedEntityAttributes.District,
+                commune: config.mapping.trackedEntityAttributes.Commune
+            }
+
         Object.entries(attributeMappings).forEach(([formField, attributeId]) => {
-            if (formData[formField] && formData[formField] !== '') {
-                attributes.push({
-                    attribute: attributeId,
-                    value: String(formData[formField])
-                })
+            if (attributeId && formData[formField] && formData[formField] !== '') {
+                attributes.push({ attribute: attributeId, value: String(formData[formField]) })
             }
         })
-        
+
+        if (Object.keys(programTeAttributes).length === 0) {
+            console.warn('[PROGRAM TE ATTR] Using fallback config mapping for TE attributes')
+        }
+
         return attributes
     }
 
@@ -574,7 +743,7 @@ const RiskScreeningTool = () => {
                 <Header selectedOrgUnit={selectedOrgUnit} orgUnits={orgUnits} />
 
                 {/* Progress Steps */}
-                <ProgressSteps currentStep={currentStep} steps={steps} />
+                <ProgressSteps currentStep={currentStep} steps={steps}/>
 
                 {/* Field Mapping Status */}
                 <FieldMappingStatus 

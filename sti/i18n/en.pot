@@ -5,14 +5,14 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
-"POT-Creation-Date: 2025-08-17T08:14:30.385Z\n"
-"PO-Revision-Date: 2025-08-17T08:14:30.385Z\n"
+"POT-Creation-Date: 2025-08-19T01:46:21.162Z\n"
+"PO-Revision-Date: 2025-08-19T01:46:21.163Z\n"
 
 msgid "ERROR"
 msgstr "ERROR"
 
-msgid "Loading STI Platform"
-msgstr "Loading STI Platform"
+msgid "Loading"
+msgstr "Loading"
 
 msgid "Risk Screening"
 msgstr "Risk Screening"
