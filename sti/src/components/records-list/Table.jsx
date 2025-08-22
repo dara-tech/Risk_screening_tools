@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Checkbox } from '../ui/checkbox'
+import Tooltip from '../ui/tooltip'
+import { FiEye, FiEdit, FiTrash2 } from 'react-icons/fi'
 // Removed: BulkDeleteModal is no longer needed
 
 const formatDate = (dateString) => {
@@ -9,7 +11,7 @@ const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString()
 }
 
-const Table = ({ loading, totalRecords, records, getRiskLevelColor, onDelete, deletingId, onBulkDelete, bulkDeleting }) => {
+const Table = ({ loading, totalRecords, records, getRiskLevelColor, onDelete, deletingId, onBulkDelete, bulkDeleting, onEdit, onView }) => {
     const [selectedIds, setSelectedIds] = useState([])
     // Removed: showBulkDeleteModal state is gone
 
@@ -142,7 +144,11 @@ const Table = ({ loading, totalRecords, records, getRiskLevelColor, onDelete, de
                                             <div className="h-4 bg-gray-200 rounded w-24"></div>
                                         </td>
                                         <td className="py-4 px-6">
-                                            <div className="h-8 bg-gray-200 rounded w-16"></div>
+                                            <div className="flex items-center space-x-1">
+                                                <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                                                <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                                                <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -264,22 +270,41 @@ const Table = ({ loading, totalRecords, records, getRiskLevelColor, onDelete, de
                                         </td>
                                         <td className="py-4 px-6">
                                             <div className="flex items-center space-x-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-slate-700 hover:text-slate-900 hover:bg-slate-50"
-                                                >
-                                                    View Details
-                                                </Button>
-                                                <Button
-                                                    onClick={() => onDelete && onDelete(record)}
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    disabled={deletingId === record.id}
-                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-60"
-                                                >
-                                                    {deletingId === record.id ? 'Deleting...' : 'Delete'}
-                                                </Button>
+                                                <Tooltip content="View record details" position="top">
+                                                    <Button
+                                                        onClick={() => onView && onView(record)}
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                                    >
+                                                        <FiEye className="w-4 h-4" />
+                                                    </Button>
+                                                </Tooltip>
+                                                <Tooltip content="Edit record" position="top">
+                                                    <Button
+                                                        onClick={() => onEdit && onEdit(record)}
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                    >
+                                                        <FiEdit className="w-4 h-4" />
+                                                    </Button>
+                                                </Tooltip>
+                                                <Tooltip content="Delete record" position="top">
+                                                    <Button
+                                                        onClick={() => onDelete && onDelete(record)}
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        disabled={deletingId === record.id}
+                                                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-50"
+                                                    >
+                                                        {deletingId === record.id ? (
+                                                            <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                                                        ) : (
+                                                            <FiTrash2 className="w-4 h-4" />
+                                                        )}
+                                                    </Button>
+                                                </Tooltip>
                                             </div>
                                         </td>
                                     </tr>

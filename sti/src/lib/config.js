@@ -23,16 +23,17 @@ export const config = {
   // Validation Settings
   validation: {
     requiredFields: [
-      'System_ID', 'No', 'Month', 'Year', 'Donor', 'NGO', 
-      'Province', 'OD', 'District', 'Commune', 'Date', 
-      'UUIC', 'Fname', 'Lname', 'RSQ1', 'DOB'
+      'System ID', 'UUIC', 'Family Name', 'Last Name', 'Sex', 'Date of Birth',
+      'Province', 'OD', 'District', 'Commune'
     ],
     optionalFields: [
-      'RSQ2', 'RSQ3', 'RSQ4', 'RSQ501', 'RSQ502', 'RSQ503', 
-      'RSQ504', 'RSQ505', 'RSQ6', 'RSQ701', 'RSQ702', 'RSQ703', 
-      'RSQ704', 'RSQ705', 'RSQ706', 'RSQ707', 'RSQ708', 'RSQ709', 
-      'RSQ710', 'RSQ711', 'RSQ712', 'RSQ713', 'RSQ714', 'RSQ8', 
-      'RSQ9', 'RSQ10', 'RSQ11', 'RSQ12'
+      'Sex at Birth', 'Gender Identity', 'Sexual Health Concerns', 'Had Sex Past 6 Months',
+      'Partner Male', 'Partner Female', 'Partner TGW', 'Number of Sexual Partners', 'Donor', 'NGO',
+      'Past 6 Months Practices', 'HIV Test Past 6 Months', 'HIV Test Result',
+      'Risk Screening Result', 'Sex with HIV Partner', 'Sex without Condom', 'STI Symptoms',
+      'Syphilis Positive', 'Receive Money for Sex', 'Paid for Sex', 'Injected Drug Shared Needle',
+      'Alcohol Drug Before Sex', 'Group Sex Chemsex', 'Currently on PrEP', 'Last HIV Test Date',
+      'Abortion', 'Forced Sex', 'Risk Screening Score', 'None of Above', 'Ever on PrEP'
     ]
   },
 
@@ -44,15 +45,18 @@ export const config = {
     trackedEntityType: 'MCPQUTHX1Ze'
   },
 
-  // Mapping Configuration
+        // Mapping Configuration
   mapping: {
     // Tracked Entity Attributes
     trackedEntityAttributes: {
       'System_ID': 'n0KF6wMqMOP',
-      'UUIC': 'dPxmpNziBD8',
+      'UUIC': 'e5FXJFKQyuB',
+      'Donor': 'PU5ZFhLIFA7',
+      'NGO': 'LTSLftFhQoL',
       'Family_Name': 'KN6AR1YuTDn',
       'Last_Name': 'gJXkrAyY061',
       'Sex': 'BR1fUe7Nx8V',
+      'sex': 'BR1fUe7Nx8V', // Add lowercase version for consistency
       'DOB': 'FmWxUZurqA8',
       'Province': 'Kd68BViw8AF',
       'OD': 'YxKunRADsZs',
@@ -60,10 +64,31 @@ export const config = {
       'Commune': 'f6ztgUdD9RV'
     },
 
+    // Value mappings for form fields to DHIS2 values
+    valueMappings: {
+      sex: {
+        'Male': 'Male',
+        'Female': 'Female', 
+        'Intersex': 'Intersex'
+      },
+      Sex: {
+        'Male': 'Male',
+        'Female': 'Female', 
+        'Intersex': 'Intersex'
+      },
+      genderIdentity: {
+        'Male': 'Male',
+        'Female': 'Female',
+        'Transgender': 'Transgender',
+        'Non-binary': 'Non-binary',
+        'Other': 'Other'
+      }
+    },
+
     // Program Stage Data Elements - Actual DHIS2 IDs from the data
     programStageDataElements: {
       // Gender Identity
-      'genderIdentity': 'Lbi259Segyq',
+      'genderIdentity': 'Hvpk8CSzvWZ',
       // Sexual Health Concerns
       'sexualHealthConcerns': 'HZzeCzQOuvh',
       // Had Sex Past 6 Months
@@ -71,47 +96,48 @@ export const config = {
       // Partner Male
       'partnerMale': 'IjncwaiwvUv',
       // Partner Female
-      'partnerFemale': 'b5Jgn263AJT',
+      'partnerFemale': 'TlXvK6qrt1b',
       // Partner TGW
-      'partnerTGW': 'y2jfGnMOTNH',
+      'partnerTGW': 'G4r3E6LI70l',
       // Number of Sexual Partners
       'numberOfSexualPartners': 'qa4gp2GMQUA',
-      // Sex Without Condom
-      'sexWithoutCondom': 'bls0dsZMoRO',
       // Sex With HIV Partner
-      'sexWithHIVPartner': 'JhZONUgUE87',
+      'sexWithHIVPartner': 'bls0dsZMoRO',
+      // Sex Without Condom
+      'sexWithoutCondom': 'JhZONUgUE87',
       // STI Symptoms
       'stiSymptoms': 'HnK9Yh1aWn1',
       // Syphilis Positive
       'syphilisPositive': 'y2jfGnMOTNH',
       // HIV Test Past 6 Months
-      'hivTestPast6Months': 'b5Jgn263AJT',
+      'hivTestPast6Months': 'upbKDAnhG8T',
       // HIV Test Result
-      'hivTestResult': 'BKILZQUFa2t',
+      'hivTestResult': 'yWvKnLg2VRq',
       // Last HIV Test Date
-      'lastHivTestDate': 'Mm3MCV89ukA',
+      'lastHivTestDate': 'ARFp7wrxiFV',
       // Currently On PrEP
-      'currentlyOnPrep': 'fVWjzCcSCyF',
+      'currentlyOnPrep': 'LTf9Uj5JnqN',
       // Ever On PrEP
-      'everOnPrep': 'LTf9Uj5JnqN',
+      'everOnPrep': 'ziEaDW60taC',
       // Receive Money For Sex
-      'receiveMoneyForSex': 'nXk4YihKCF5',
+      'receiveMoneyForSex': 'b5Jgn263AJT',
       // Paid For Sex
-      'paidForSex': 'sEspagSJHg6',
+      'paidForSex': 'BKILZQUFa2t',
       // Injected Drug Shared Needle
-      'injectedDrugSharedNeedle': 'ziEaDW60taC',
+      'injectedDrugSharedNeedle': 'Mm3MCV89ukA',
       // Alcohol Drug Before Sex
-      'alcoholDrugBeforeSex': 'ARFp7wrxiFV',
+      'alcoholDrugBeforeSex': 'fVWjzCcSCyF',
       // Group Sex Chemsex
-      'groupSexChemsex': 'upbKDAnhG8T',
+      'groupSexChemsex': 'FdYD7ISx2s6',
       // Abortion
-      'abortion': 'yWvKnLg2VRq',
+      'abortion': 'nXk4YihKCF5',
       // Forced Sex
-      'forcedSex': 'MBizmGFOeZg',
+      'forcedSex': 'sEspagSJHg6',
       // None Of Above
-      'noneOfAbove': 'eEY6HLGq5FF',
+      'noneOfAbove': 'q4Xuew3y1c7',
       // Additional fields from the data
-      'sexAtBirth': 'Hvpk8CSzvWZ',
+      'sexAtBirth': 'Lbi259Segyq',
+      'sex': 'Lbi259Segyq', // Map sex to sexAtBirth data element
       'riskScreeningResult': 'MBizmGFOeZg',
       'riskScreeningScore': 'eEY6HLGq5FF',
       'past6MonthsPractices': 'd30ueni5gyM'

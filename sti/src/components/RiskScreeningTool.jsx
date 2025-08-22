@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useDataEngine } from '@dhis2/app-runtime'
+import { useLocation } from 'react-router-dom'
 import { t } from '../lib/i18n'
 import { useToast } from './ui/ui/toast'
 import { Card, CardContent } from './ui/card'
-import { programStageDataElements, fetchAndUpdateProgramStageData } from '../lib/programStageData'
+import {  fetchAndUpdateProgramStageData } from '../lib/programStageData'
 import { useDHIS2FormData } from '../lib/dhis2FormData'
 import { config } from '../lib/config'
 import { 
@@ -31,7 +32,10 @@ const programId = 'gmO3xUubvMb'
 const programStageId = 'hqJKFmOU6s7'
 
 const RiskScreeningTool = () => {
+    const location = useLocation()
     const [currentStep, setCurrentStep] = useState(1)
+    const [mode, setMode] = useState('create') // 'create', 'edit', 'view'
+    const [originalRecordId, setOriginalRecordId] = useState(null)
     const [formData, setFormData] = useState({
         // Tracked Entity Attributes (Person Information) - SEED DATA
         systemId: 'SYS001',
@@ -44,6 +48,8 @@ const RiskScreeningTool = () => {
         od: 'OD001',
         district: 'District 1',
         commune: 'Commune A',
+        donor: '',
+        ngo: '',
         
         // Program Stage Data Elements - SEED DATA
         sexAtBirth: 'Male',
@@ -113,6 +119,96 @@ const RiskScreeningTool = () => {
         fetchFormOptions()
         fetchProgramTeiAttributes()
     }, [])
+
+    // Handle edit/view mode from navigation
+    useEffect(() => {
+        const handleEditViewMode = () => {
+            // Check for navigation state
+            if (location.state?.mode && location.state?.recordData) {
+                const { mode: navMode, recordData } = location.state
+                setMode(navMode)
+                setOriginalRecordId(recordData.id)
+                
+                // Populate form with record data
+                const populatedData = {
+                    // Tracked Entity Attributes
+                    systemId: recordData.systemId || '',
+                    uuic: recordData.uuic || '',
+                    familyName: recordData.familyName || '',
+                    lastName: recordData.lastName || '',
+                    sex: recordData.sex || '',
+                    dateOfBirth: recordData.dateOfBirth || '',
+                    province: recordData.province || '',
+                    od: recordData.od || '',
+                    district: recordData.district || '',
+                    commune: recordData.commune || '',
+                    
+                    // Program Stage Data Elements
+                    sexAtBirth: recordData.sexAtBirth || '',
+                    genderIdentity: recordData.genderIdentity || '',
+                    sexualHealthConcerns: recordData.sexualHealthConcerns || '',
+                    hadSexPast6Months: recordData.hadSexPast6Months || '',
+                    partnerMale: recordData.partnerMale || '',
+                    partnerFemale: recordData.partnerFemale || '',
+                    partnerTGW: recordData.partnerTGW || '',
+                    numberOfSexualPartners: recordData.numberOfSexualPartners || '',
+                    past6MonthsPractices: recordData.past6MonthsPractices || '',
+                    hivTestPast6Months: recordData.hivTestPast6Months || '',
+                    hivTestResult: recordData.hivTestResult || '',
+                    riskScreeningResult: recordData.riskScreeningResult || '',
+                    sexWithHIVPartner: recordData.sexWithHIVPartner || '',
+                    sexWithoutCondom: recordData.sexWithoutCondom || '',
+                    stiSymptoms: recordData.stiSymptoms || '',
+                    syphilisPositive: recordData.syphilisPositive || '',
+                    receiveMoneyForSex: recordData.receiveMoneyForSex || '',
+                    paidForSex: recordData.paidForSex || '',
+                    injectedDrugSharedNeedle: recordData.injectedDrugSharedNeedle || '',
+                    alcoholDrugBeforeSex: recordData.alcoholDrugBeforeSex || '',
+                    groupSexChemsex: recordData.groupSexChemsex || '',
+                    currentlyOnPrep: recordData.currentlyOnPrep || '',
+                    lastHivTestDate: recordData.lastHivTestDate || '',
+                    abortion: recordData.abortion || '',
+                    forcedSex: recordData.forcedSex || '',
+                    riskScreeningScore: recordData.riskScreeningScore || 0,
+                    noneOfAbove: recordData.noneOfAbove || '',
+                    everOnPrep: recordData.everOnPrep || '',
+                    
+                    // Calculated fields
+                    riskScore: recordData.riskScore || 0,
+                    riskLevel: recordData.riskLevel || '',
+                    riskFactors: recordData.riskFactors || [],
+                    recommendations: recordData.recommendations || []
+                }
+                
+                setFormData(populatedData)
+                
+                // Set organization unit if available
+                if (recordData.orgUnit) {
+                    setSelectedOrgUnit(recordData.orgUnit)
+                }
+                
+                // Show appropriate message
+                if (navMode === 'edit') {
+                    showToast({
+                        title: 'Edit Mode',
+                        description: `Editing record: ${recordData.systemId || recordData.id}`,
+                        variant: 'default'
+                    })
+                } else if (navMode === 'view') {
+                    showToast({
+                        title: 'View Mode',
+                        description: `Viewing record: ${recordData.systemId || recordData.id}`,
+                        variant: 'default'
+                    })
+                }
+                
+                // Clear navigation state to prevent re-triggering
+                window.history.replaceState({}, document.title)
+            }
+        }
+        
+        handleEditViewMode()
+    }, [location.state, showToast])
 
     const fetchFormOptions = useCallback(async () => {
         try {
@@ -285,6 +381,8 @@ const RiskScreeningTool = () => {
                 else if (n === 'od' || n.includes('operational district')) dynamicMap.od = tea.id
                 else if (n.includes('district')) dynamicMap.district = tea.id
                 else if (n.includes('commune')) dynamicMap.commune = tea.id
+                else if (n.includes('donor')) dynamicMap.donor = tea.id
+                else if (n.includes('ngo')) dynamicMap.ngo = tea.id
             })
 
             setProgramTeAttributes(dynamicMap)
@@ -461,15 +559,55 @@ const RiskScreeningTool = () => {
     }
 
     const testProgramStage = async () => {
-        // Simplified test function
+        // Test basic TEI creation
         setLoading(true)
         try {
-            showToast({
-                title: 'Test Success',
-                description: 'Test completed successfully',
-                variant: 'success'
+            console.log('🧪 [TEST] Testing basic TEI creation...')
+            
+            const orgUnitId = selectedOrgUnit || orgUnits[0]?.id
+            if (!orgUnitId) {
+                throw new Error('No organization unit selected')
+            }
+            
+            const testTeiPayload = {
+                trackedEntityInstances: [{
+                    trackedEntityType: config.program.trackedEntityType,
+                    orgUnit: orgUnitId,
+                    attributes: [
+                        {
+                            attribute: config.mapping.trackedEntityAttributes.System_ID,
+                            value: `TEST_${Date.now()}`
+                        },
+                        {
+                            attribute: config.mapping.trackedEntityAttributes.UUIC,
+                            value: `TEST_UUIC_${Date.now()}`
+                        }
+                    ]
+                }]
+            }
+            
+            console.log('🧪 [TEST] TEI payload:', testTeiPayload)
+            
+            const teiRes = await engine.mutate({
+                resource: 'trackedEntityInstances',
+                type: 'create',
+                data: testTeiPayload
             })
+            
+            console.log('🧪 [TEST] TEI response:', teiRes)
+            
+            if (teiRes?.response?.status === 'SUCCESS') {
+                showToast({
+                    title: 'Test Success',
+                    description: 'Basic TEI creation works!',
+                    variant: 'success'
+                })
+            } else {
+                console.error('🧪 [TEST] TEI creation failed:', teiRes)
+                throw new Error('TEI creation failed - check console for details')
+            }
         } catch (error) {
+            console.error('🧪 [TEST] Error:', error)
             showToast({
                 title: 'Test Failed',
                 description: `Error: ${error.message}`,
@@ -653,6 +791,8 @@ const RiskScreeningTool = () => {
             : {
                 systemId: config.mapping.trackedEntityAttributes.System_ID,
                 uuic: config.mapping.trackedEntityAttributes.UUIC,
+                donor: config.mapping.trackedEntityAttributes.Donor,
+                ngo: config.mapping.trackedEntityAttributes.NGO,
                 familyName: config.mapping.trackedEntityAttributes.Family_Name,
                 lastName: config.mapping.trackedEntityAttributes.Last_Name,
                 sex: config.mapping.trackedEntityAttributes.Sex,
@@ -687,6 +827,9 @@ const RiskScreeningTool = () => {
     }
 
     const renderCurrentStep = () => {
+        const isViewMode = mode === 'view'
+        const isEditMode = mode === 'edit'
+        
         switch (currentStep) {
             case 1:
                 return (
@@ -697,6 +840,9 @@ const RiskScreeningTool = () => {
                         selectedOrgUnit={selectedOrgUnit}
                         setSelectedOrgUnit={setSelectedOrgUnit}
                         formOptions={formOptions}
+                        mode={mode}
+                        isViewMode={isViewMode}
+                        isEditMode={isEditMode}
                     />
                 )
             case 2:
@@ -705,6 +851,9 @@ const RiskScreeningTool = () => {
                         formData={formData} 
                         updateFormData={updateFormData}
                         formOptions={formOptions}
+                        mode={mode}
+                        isViewMode={isViewMode}
+                        isEditMode={isEditMode}
                     />
                 )
             case 3:
@@ -713,6 +862,9 @@ const RiskScreeningTool = () => {
                         formData={formData} 
                         updateFormData={updateFormData}
                         formOptions={formOptions}
+                        mode={mode}
+                        isViewMode={isViewMode}
+                        isEditMode={isEditMode}
                     />
                 )
             case 4:
@@ -721,6 +873,9 @@ const RiskScreeningTool = () => {
                         formData={formData} 
                         updateFormData={updateFormData}
                         calculateRiskScore={calculateRiskScore}
+                        mode={mode}
+                        isViewMode={isViewMode}
+                        isEditMode={isEditMode}
                     />
                 )
             case 5:
@@ -729,6 +884,9 @@ const RiskScreeningTool = () => {
                         formData={formData}
                         savedRecords={savedRecords}
                         calculateRiskScore={calculateRiskScore}
+                        mode={mode}
+                        isViewMode={isViewMode}
+                        isEditMode={isEditMode}
                     />
                 )
             default:
@@ -740,7 +898,7 @@ const RiskScreeningTool = () => {
         <div className="min-h-screen py-4 sm:py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
                 {/* Header */}
-                <Header selectedOrgUnit={selectedOrgUnit} orgUnits={orgUnits} />
+                <Header selectedOrgUnit={selectedOrgUnit} orgUnits={orgUnits} mode={mode} />
 
                 {/* Progress Steps */}
                 <ProgressSteps currentStep={currentStep} steps={steps}/>
@@ -776,6 +934,9 @@ const RiskScreeningTool = () => {
                     onNext={handleNext}
                     onSave={handleSave}
                     onViewRecords={() => window.location.href = '/records-list'}
+                    mode={mode}
+                    isViewMode={mode === 'view'}
+                    isEditMode={mode === 'edit'}
                 />
 
                 {/* Saved Records */}

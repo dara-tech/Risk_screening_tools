@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useDataEngine } from '@dhis2/app-runtime'
+import { useNavigate } from 'react-router-dom'
 
 import { t } from '../lib/i18n'
 import { useToast } from '../components/ui/ui/toast'
@@ -18,6 +19,7 @@ import Filters from '../components/records-list/Filters'
 import HeaderBar from '../components/records-list/HeaderBar'
 import Pagination from '../components/records-list/Pagination'
 import Table from '../components/records-list/Table'
+import EditRecordModal from '../components/EditRecordModal'
 
 const RecordsList = () => {
     const [records, setRecords] = useState([])
@@ -50,6 +52,7 @@ const RecordsList = () => {
     
     const engine = useDataEngine()
     const { showToast } = useToast()
+    const navigate = useNavigate()
     const latestPageRequestedRef = useRef(0)
 
     // Close pickers when clicking outside
@@ -312,11 +315,21 @@ const RecordsList = () => {
             const processedRecords = events.map(event => {
                 const dataValues = event.dataValues || []
                 console.log('📊 Data values for event:', event.event, dataValues)
+                console.log('🔍 All data values:', dataValues.map(dv => `${dv.dataElement}: ${dv.value}`))
                 
                 // Find tracked entity instance data
                 const tei = trackedEntities.find(te => te.trackedEntityInstance === event.trackedEntityInstance)
                 const attributes = tei?.attributes || []
                 console.log('👤 Tracked entity attributes for:', event.trackedEntityInstance, attributes)
+                console.log('🔍 Looking for sex attribute ID:', config.mapping.trackedEntityAttributes.Sex)
+                const sexAttribute = attributes.find(attr => attr.attribute === config.mapping.trackedEntityAttributes.Sex)
+                console.log('🔍 Sex attribute found:', sexAttribute)
+                console.log('🔍 All tracked entity attributes:', attributes.map(attr => `${attr.attribute}: ${attr.value}`))
+                console.log('🔍 Looking for sex attribute with ID:', config.mapping.trackedEntityAttributes.Sex)
+                console.log('🔍 Sex attribute found:', attributes.find(attr => attr.attribute === config.mapping.trackedEntityAttributes.Sex))
+                console.log('🔍 Sex attribute value:', attributes.find(attr => attr.attribute === config.mapping.trackedEntityAttributes.Sex)?.value)
+                console.log('🔍 All attribute IDs:', attributes.map(attr => attr.attribute))
+                console.log('🔍 Looking for any attribute containing "sex":', attributes.filter(attr => attr.attribute.toLowerCase().includes('sex')))
                 console.log('📅 Date of birth from attributes:', attributes.find(attr => attr.attribute === config.mapping.trackedEntityAttributes.DOB)?.value)
                 
                 const record = {
@@ -348,13 +361,41 @@ const RecordsList = () => {
                     recommendations: []
                 }
 
+                // Helper function to reverse map DHIS2 values to display values
+                const reverseMapValue = (fieldName, dhValue) => {
+                    console.log(`🔍 Reverse mapping ${fieldName}: ${dhValue}`)
+                    if (config.mapping.valueMappings && config.mapping.valueMappings[fieldName]) {
+                        const mapping = config.mapping.valueMappings[fieldName]
+                        console.log(`🔍 Available mappings for ${fieldName}:`, mapping)
+                        const reverseMapping = Object.fromEntries(
+                            Object.entries(mapping).map(([key, value]) => [value, key])
+                        )
+                        console.log(`🔍 Reverse mapping for ${fieldName}:`, reverseMapping)
+                        if (reverseMapping[dhValue]) {
+                            console.log(`🔍 Found reverse mapping: ${dhValue} -> ${reverseMapping[dhValue]}`)
+                            return reverseMapping[dhValue]
+                        } else {
+                            console.log(`🔍 No reverse mapping found for ${dhValue}`)
+                        }
+                    } else {
+                        console.log(`🔍 No value mappings configured for ${fieldName}`)
+                    }
+                    return dhValue
+                }
+
                 // Map tracked entity attributes (personal information)
                 attributes.forEach(attr => {
+                    console.log(`Processing attribute: ${attr.attribute} = ${attr.value}`)
                     if (attr.attribute === config.mapping.trackedEntityAttributes.System_ID) record.systemId = attr.value
                     else if (attr.attribute === config.mapping.trackedEntityAttributes.UUIC) record.uuic = attr.value
                     else if (attr.attribute === config.mapping.trackedEntityAttributes.Family_Name) record.familyName = attr.value
                     else if (attr.attribute === config.mapping.trackedEntityAttributes.Last_Name) record.lastName = attr.value
-                    else if (attr.attribute === config.mapping.trackedEntityAttributes.Sex) record.sex = attr.value
+                    else if (attr.attribute === config.mapping.trackedEntityAttributes.Sex) {
+                        console.log(`Found sex attribute: ${attr.value}, reverse mapping to: ${reverseMapValue('sex', attr.value)}`)
+                        const mappedValue = reverseMapValue('sex', attr.value)
+                        console.log(`🔍 Sex mapping result: "${attr.value}" -> "${mappedValue}"`)
+                        record.sex = mappedValue
+                    }
                     else if (attr.attribute === config.mapping.trackedEntityAttributes.DOB) record.dateOfBirth = attr.value
                     else if (attr.attribute === config.mapping.trackedEntityAttributes.Province) record.province = attr.value
                     else if (attr.attribute === config.mapping.trackedEntityAttributes.OD) record.od = attr.value
@@ -379,8 +420,17 @@ const RecordsList = () => {
 
                 // Map data values to record fields using actual DHIS2 data element IDs
                 dataValues.forEach(dv => {
+                    console.log(`Processing data value: ${dv.dataElement} = ${dv.value}`)
                     // Program Stage Data Elements - Using actual field names
                     if (dv.dataElement === config.mapping.programStageDataElements.genderIdentity) record.genderIdentity = dv.value
+                    else if (dv.dataElement === config.mapping.programStageDataElements.sexAtBirth) {
+                        console.log(`Found sexAtBirth data element: ${dv.value}`)
+                        // Only set sex if it's not already set from tracked entity attributes
+                        if (!record.sex || record.sex === '') {
+                            record.sex = reverseMapValue('sex', dv.value)
+                            console.log(`🔍 Set sex from sexAtBirth data element: ${record.sex}`)
+                        }
+                    }
                     else if (dv.dataElement === config.mapping.programStageDataElements.sexualHealthConcerns) record.sexualHealthConcerns = dv.value
                     else if (dv.dataElement === config.mapping.programStageDataElements.hadSexPast6Months) record.hadSexPast6Months = dv.value
                     else if (dv.dataElement === config.mapping.programStageDataElements.partnerMale) record.partnerMale = dv.value
@@ -411,6 +461,12 @@ const RecordsList = () => {
                 })
 
                 console.log('📋 Processed record:', record)
+                console.log('🔍 Final sex value:', record.sex)
+                console.log('🔍 Sex value type:', typeof record.sex)
+                console.log('🔍 Sex value length:', record.sex?.length)
+                console.log('🔍 Sex value empty check:', record.sex === '')
+                console.log('🔍 Sex value undefined check:', record.sex === undefined)
+                console.log('🔍 Sex value null check:', record.sex === null)
                 return record
             })
 
@@ -783,6 +839,49 @@ const RecordsList = () => {
     const [deletingId, setDeletingId] = useState(null)
     const [bulkDeleting, setBulkDeleting] = useState(false)
     
+    // Edit modal state
+    const [editModalOpen, setEditModalOpen] = useState(false)
+    const [editingRecord, setEditingRecord] = useState(null)
+    
+    // View and Edit handlers
+    const handleViewRecord = (record) => {
+        console.log('Viewing record:', record)
+        // Store record data in sessionStorage for viewing
+        sessionStorage.setItem('viewRecordData', JSON.stringify(record))
+        sessionStorage.setItem('viewMode', 'view')
+        
+        // Navigate to RiskScreeningTool in view mode
+        navigate('/risk-screening', { 
+            state: { 
+                mode: 'view',
+                recordData: record 
+            }
+        })
+        
+        showToast({
+            title: 'View Record',
+            description: `Opening record: ${record.systemId || record.id}`,
+            variant: 'default'
+        })
+    }
+    
+    const handleEditRecord = (record) => {
+        console.log('Editing record:', record)
+        setEditingRecord(record)
+        setEditModalOpen(true)
+        
+        showToast({
+            title: 'Edit Record',
+            description: `Opening record for editing: ${record.systemId || record.id}`,
+            variant: 'default'
+        })
+    }
+    
+    const handleRecordUpdated = () => {
+        // Refresh the records list after a successful update
+        fetchRecords()
+    }
+    
     const handleDeleteRecord = async (record) => {
         if (!record?.id) return
         const confirmDelete = window.confirm('Are you sure you want to delete this record?')
@@ -942,6 +1041,8 @@ const RecordsList = () => {
                             deletingId={deletingId}
                             onBulkDelete={handleBulkDelete}
                             bulkDeleting={bulkDeleting}
+                            onView={handleViewRecord}
+                            onEdit={handleEditRecord}
                         />
                     </CardContent>
                     
@@ -963,6 +1064,20 @@ const RecordsList = () => {
                     )}
                 </Card>
             </div>
+            
+            {/* Edit Record Modal */}
+            <EditRecordModal
+                isOpen={editModalOpen}
+                onClose={() => {
+                    setEditModalOpen(false)
+                    setEditingRecord(null)
+                }}
+                record={editingRecord}
+                orgUnits={orgUnits}
+                selectedOrgUnit={selectedOrgUnit}
+                setSelectedOrgUnit={setSelectedOrgUnit}
+                onRecordUpdated={handleRecordUpdated}
+            />
         </div>
     )
 }

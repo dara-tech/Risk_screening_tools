@@ -8,7 +8,10 @@ const NavigationButtons = ({
     onPrevious, 
     onNext, 
     onSave,
-    onViewRecords
+    onViewRecords,
+    mode = 'create',
+    isViewMode = false,
+    isEditMode = false
 }) => {
     return (
         <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
@@ -29,7 +32,7 @@ const NavigationButtons = ({
                             variant="outline"
                             className="w-full sm:w-auto px-6 py-3 text-sm sm:text-base"
                         >
-                            View All Records
+                            {isViewMode || isEditMode ? 'Back to Records' : 'View All Records'}
                         </Button>
                     )}
                 </div>
@@ -38,14 +41,15 @@ const NavigationButtons = ({
                     {currentStep < 5 ? (
                         <Button
                             onClick={onNext}
+                            disabled={isViewMode}
                             className="w-full sm:w-auto px-6 py-3 text-sm sm:text-base bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
                         >
-                            Next →
+                            {isViewMode ? 'View Next →' : 'Next →'}
                         </Button>
                     ) : (
                         <Button
                             onClick={onSave}
-                            disabled={loading}
+                            disabled={loading || isViewMode}
                             className="w-full sm:w-auto px-6 py-3 text-sm sm:text-base bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
                         >
                             {loading ? (
@@ -53,10 +57,14 @@ const NavigationButtons = ({
                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                                     <span>Saving...</span>
                                 </div>
+                            ) : isViewMode ? (
+                                <div className="flex items-center space-x-2">
+                                    <span>View Only</span>
+                                </div>
                             ) : (
                                 <div className="flex items-center space-x-2">
                                     <FiSave className="w-4 h-4" />
-                                    <span>Save Screening</span>
+                                    <span>{isEditMode ? 'Update Screening' : 'Save Screening'}</span>
                                 </div>
                             )}
                         </Button>
