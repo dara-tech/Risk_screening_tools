@@ -1,10 +1,7 @@
 import React, { useState, useCallback } from 'react'
-import { FiActivity, FiDroplet, FiShield, FiTrendingUp, FiAlertTriangle, FiCheckCircle } from 'react-icons/fi'
+import { FiActivity, FiDroplet } from 'react-icons/fi'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Input } from '../ui/input'
-import { Card } from '../ui/card'
-import { Badge } from '../ui/badge'
-import { Progress } from '../ui/progress'
 import FieldWrapper from './FieldWrapper'
 import SectionHeader from './SectionHeader'
 
@@ -372,7 +369,7 @@ const ClinicalData = ({
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FieldWrapper
-                        label={kmLabels.everOnPrep || "តើធ្លាប់ប្រើប្រីពដែរឬទេ? / Have you ever on PrEP"}
+                        label={kmLabels.everOnPrep || "៩. តើអ្នកធ្លាប់ប្រើប្រាស់ប្រីពដែរឬទេ? / Have you ever used PrEP?"}
                         tooltip="Whether client has ever taken PrEP medication"
                         status={formData.everOnPrep ? "success" : "default"}
                     >
@@ -383,12 +380,13 @@ const ClinicalData = ({
                             <SelectContent className="bg-white/95 backdrop-blur-md border border-gray-200 rounded-xl shadow-xl">
                                 <SelectItem value="Yes" className="hover:bg-blue-50 py-3">Yes</SelectItem>
                                 <SelectItem value="No" className="hover:bg-blue-50 py-3">No</SelectItem>
+                                <SelectItem value="Never Know" className="hover:bg-blue-50 py-3">Never Know</SelectItem>
                             </SelectContent>
                         </Select>
                     </FieldWrapper>
 
                     <FieldWrapper
-                        label={kmLabels.currentlyOnPrep || "បច្ចុប្បន្នកំពុងប្រើប្រីព / Currently on PrEP"}
+                        label={kmLabels.currentlyOnPrep || "១០. កំពុងប្រើប្រាស់ប្រីព / Currently using PrEP"}
                         tooltip="Whether client is currently taking PrEP medication"
                         status={formData.currentlyOnPrep ? "success" : "default"}
                     >
@@ -452,157 +450,60 @@ const ClinicalData = ({
                 </div>
             </div>
 
+            {/* Questions 13-14: Risk Screening Results */}
+            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+                {!hideHeaders && (
+                    <SectionHeader
+                        icon={FiActivity}
+                        title="លទ្ធផលវាយតម្លៃកម្រិតប្រឈម"
+                        subtitle="Risk Screening Results"
+                        gradient="from-orange-500 to-red-500"
+                        badge="Results"
+                    />
+                )}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FieldWrapper
+                        label={kmLabels.riskScreeningScore || "ពិន្ទុវាយតម្លៃកម្រិតប្រឈម / Risk Screening Score"}
+                        tooltip="Enter the risk screening score (0-100)"
+                        status={formData.riskScreeningScore ? "success" : "default"}
+                    >
+                        <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={formData.riskScreeningScore}
+                            onChange={(e) => handleInputChange('riskScreeningScore', e.target.value)}
+                            className="h-14 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:border-orange-300 focus:ring-4 focus:ring-orange-100 transition-all duration-300 hover:border-gray-300"
+                            placeholder="Enter score (0-100)"
+                            onFocus={() => setFocusedField('riskScreeningScore')}
+                            onBlur={() => setFocusedField(null)}
+                        />
+                    </FieldWrapper>
+
+                    <FieldWrapper
+                        label={kmLabels.riskScreeningResult || "លទ្ធផលវាយតម្លៃកម្រិតប្រឈម / Risk Screening Result"}
+                        tooltip="Select the risk screening result level"
+                        status={formData.riskScreeningResult ? "success" : "default"}
+                    >
+                        <Select value={formData.riskScreeningResult} onValueChange={(value) => handleInputChange('riskScreeningResult', value)}>
+                            <SelectTrigger className="h-14 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:border-orange-300 focus:ring-4 focus:ring-orange-100 transition-all duration-300 hover:border-gray-300">
+                                <SelectValue placeholder="Select risk level" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white/95 backdrop-blur-md border border-gray-200 rounded-xl shadow-xl">
+                                <SelectItem value="Very Low" className="hover:bg-blue-50 py-3">Very Low</SelectItem>
+                                <SelectItem value="Low" className="hover:bg-green-50 py-3">Low</SelectItem>
+                                <SelectItem value="Medium" className="hover:bg-yellow-50 py-3">Medium</SelectItem>
+                                <SelectItem value="High" className="hover:bg-red-50 py-3">High</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </FieldWrapper>
+                </div>
+            </div>
 
         </div>
     )
 }
 
-// Helper functions for risk assessment
-const calculateRiskScore = (formData) => {
-    let score = 0
-    
-    // Basic sexual activity
-    if (formData.hadSexPast6Months === 'Yes') score += 5
-    
-    // Number of partners
-    if (formData.numberOfSexualPartners === '1') score += 5
-    else if (formData.numberOfSexualPartners === '2') score += 10
-    else if (formData.numberOfSexualPartners === '3') score += 15
-    else if (formData.numberOfSexualPartners === '4') score += 20
-    else if (formData.numberOfSexualPartners === '5') score += 25
-    else if (formData.numberOfSexualPartners === '6+') score += 30
-    
-    // High risk activities
-    if (formData.receiveMoneyForSex === 'Yes') score += 25
-    if (formData.paidForSex === 'Yes') score += 20
-    if (formData.sexWithHIVPartner === 'Yes') score += 30
-    if (formData.sexWithoutCondom === 'Yes') score += 20
-    if (formData.stiSymptoms === 'Yes') score += 25
-    if (formData.injectedDrugSharedNeedle === 'Yes') score += 30
-    if (formData.alcoholDrugBeforeSex === 'Yes') score += 15
-    if (formData.groupSexChemsex === 'Yes') score += 25
-    if (formData.forcedSex === 'Yes') score += 10
-    
-    // HIV status
-    if (formData.hivTestResult === 'Positive') score += 40
-    else if (formData.hivTestResult === 'Unknown') score += 15
-    
-    return Math.min(score, 100) // Cap at 100
-}
-
-const calculateRiskLevel = (formData) => {
-    const score = calculateRiskScore(formData)
-    
-    if (score >= 60) return 'High'
-    else if (score >= 30) return 'Medium'
-    else if (score >= 10) return 'Low'
-    else return 'Very Low'
-}
-
-const getRiskLevelColor = (level) => {
-    switch (level) {
-        case 'High': return 'bg-red-100 text-red-800 border-red-200'
-        case 'Medium': return 'bg-orange-100 text-orange-800 border-orange-200'
-        case 'Low': return 'bg-green-100 text-green-800 border-green-200'
-        case 'Very Low': return 'bg-blue-100 text-blue-800 border-blue-200'
-        default: return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-}
-
-const getRiskLevelIcon = (level) => {
-    switch (level) {
-        case 'High': return <FiAlertTriangle className="w-5 h-5" />
-        case 'Medium': return <FiTrendingUp className="w-5 h-5" />
-        case 'Low': return <FiCheckCircle className="w-5 h-5" />
-        case 'Very Low': return <FiShield className="w-5 h-5" />
-        default: return <FiShield className="w-5 h-5" />
-    }
-}
-
-const getRiskLevelText = (level) => {
-    switch (level) {
-        case 'High': return 'ខ្ពស់'
-        case 'Medium': return 'មធ្យម'
-        case 'Low': return 'ទាប'
-        case 'Very Low': return 'ទាបណាស់'
-        default: return 'មិនបានគណនា'
-    }
-}
-
-const getRiskFactors = (formData) => {
-    const factors = []
-    
-    if (formData.hadSexPast6Months === 'Yes') factors.push('ការរួមភេទក្នុងរយៈពេល៦ខែចុងក្រោយ / Sexual activity in past 6 months')
-    if (formData.numberOfSexualPartners && formData.numberOfSexualPartners !== '0') factors.push('ដៃគូរួមភេទច្រើន / Multiple sexual partners')
-    if (formData.receiveMoneyForSex === 'Yes') factors.push('សកម្មភាពផ្លូវភេទ / Sex work activities')
-    if (formData.paidForSex === 'Yes') factors.push('សកម្មភាពផ្លូវភេទពាណិជ្ជកម្ម / Commercial sex activity')
-    if (formData.sexWithHIVPartner === 'Yes') factors.push('រួមភេទជាមួយដៃគូផ្ទុកអេដស៍ / Sex with HIV+ partner')
-    if (formData.sexWithoutCondom === 'Yes') factors.push('រួមភេទដោយមិនប្រើកុងដូម / Unprotected sex')
-    if (formData.stiSymptoms === 'Yes') factors.push('មានរោគសញ្ញាជំងឺឆ្លងតាមរយៈរួមភេទ / STI symptoms present')
-    if (formData.injectedDrugSharedNeedle === 'Yes') factors.push('ការប្រើម្ជុលរួមគ្នា / Needle sharing')
-    if (formData.alcoholDrugBeforeSex === 'Yes') factors.push('ការប្រើគ្រឿងស្រវឹង/ថ្នាំមុនរួមភេទ / Substance use before sex')
-    if (formData.groupSexChemsex === 'Yes') factors.push('រួមភេទជាក្រុម ឬរួមភេទជាមួយថ្នាំ / Group sex or chemsex')
-    if (formData.forcedSex === 'Yes') factors.push('បទពិសោធន៍រួមភេទដោយបង្ខំ / Forced sex experience')
-    
-    return factors
-}
-
-const getRecommendations = (riskLevel) => {
-    switch (riskLevel) {
-        case 'High':
-            return (
-                <div className="p-3 bg-red-50 rounded-lg border-l-4 border-red-400">
-                    <p className="font-medium text-red-900">សកម្មភាពដែលត្រូវធ្វើភ្លាមៗ / Immediate Actions Required:</p>
-                    <ul className="text-sm text-red-700 mt-2 space-y-1">
-                        <li>• ការធ្វើតេស្តជំងឺឆ្លងតាមរយៈរួមភេទ/អេដស៍ភ្លាមៗ / Immediate STI/HIV testing</li>
-                        <li>• ពិចារណាប្រើប្រីពប្រសិនបើមិនមានអេដស៍ / Consider PrEP if HIV negative</li>
-                        <li>• ការប្រើកុងដូមជាប្រចាំត្រូវបានណែនាំយ៉ាងខ្លាំង / Regular condom use strongly advised</li>
-                        <li>• ពិចារណាសេវាការណែនាំ / Consider counseling services</li>
-                    </ul>
-                </div>
-            )
-        case 'Medium':
-            return (
-                <div className="p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-400">
-                    <p className="font-medium text-yellow-900">សកម្មភាពដែលបានណែនាំ / Recommended Actions:</p>
-                    <ul className="text-sm text-yellow-700 mt-2 space-y-1">
-                        <li>• ការធ្វើតេស្តជំងឺឆ្លងតាមរយៈរួមភេទជាប្រចាំ (រៀងរាល់៣-៦ខែ) / Regular STI testing (every 3-6 months)</li>
-                        <li>• ការប្រើកុងដូមជាប្រចាំ / Consistent condom use</li>
-                        <li>• ពិចារណាប្រើប្រីពប្រសិនបើមានហានិភ័យ / Consider PrEP if at risk</li>
-                        <li>• ការពិនិត្យសុខភាពជាប្រចាំ / Regular health check-ups</li>
-                    </ul>
-                </div>
-            )
-        case 'Low':
-            return (
-                <div className="p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
-                    <p className="font-medium text-green-900">រក្សាការអនុវត្តល្អ / Maintain Good Practices:</p>
-                    <ul className="text-sm text-green-700 mt-2 space-y-1">
-                        <li>• បន្តការអនុវត្តរួមភេទដោយសុវត្ថិភាព / Continue safe sex practices</li>
-                        <li>• ការពិនិត្យសុខភាពជាប្រចាំ / Regular health check-ups</li>
-                        <li>• រក្សាការជួបដំណឹងអំពីសុខភាពផ្លូវភេទ / Stay informed about sexual health</li>
-                        <li>• ការធ្វើតេស្តជំងឺឆ្លងតាមរយៈរួមភេទប្រចាំឆ្នាំ / Annual STI screening</li>
-                    </ul>
-                </div>
-            )
-        case 'Very Low':
-            return (
-                <div className="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-                    <p className="font-medium text-blue-900">ការអនុវត្តល្អ / Good Practices:</p>
-                    <ul className="text-sm text-blue-700 mt-2 space-y-1">
-                        <li>• រក្សាការអនុវត្តរួមភេទដោយសុវត្ថិភាព / Maintain safe sex practices</li>
-                        <li>• ការពិនិត្យសុខភាពជាប្រចាំ / Regular health check-ups</li>
-                        <li>• ការធ្វើតេស្តជំងឺឆ្លងតាមរយៈរួមភេទប្រចាំឆ្នាំ / Annual STI screening</li>
-                    </ul>
-                </div>
-            )
-        default:
-            return (
-                <div className="p-3 bg-gray-50 rounded-lg border-l-4 border-gray-400">
-                    <p className="font-medium text-gray-900">បំពេញការវាយតម្លៃដើម្បីទទួលបានអនុសាសន៍ / Complete the assessment to get recommendations</p>
-                </div>
-            )
-    }
-}
 
 export default ClinicalData

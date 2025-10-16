@@ -5,8 +5,8 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
-"POT-Creation-Date: 2025-09-02T07:57:04.720Z\n"
-"PO-Revision-Date: 2025-09-02T07:57:04.720Z\n"
+"POT-Creation-Date: 2025-10-13T04:20:54.917Z\n"
+"PO-Revision-Date: 2025-10-13T04:20:54.917Z\n"
 
 msgid "ERROR"
 msgstr "ERROR"
@@ -31,6 +31,12 @@ msgstr "Records List"
 
 msgid "View and manage all screening records"
 msgstr "View and manage all screening records"
+
+msgid "API Tests"
+msgstr "API Tests"
+
+msgid "Test all CRUD operations (GET, POST, PUT, DELETE)"
+msgstr "Test all CRUD operations (GET, POST, PUT, DELETE)"
 
 msgid "Screening Records"
 msgstr "Screening Records"

@@ -301,7 +301,7 @@ const ImportTool = () => {
 
             // Create a test CSV
             const testCSV = `System ID,UUIC,Family Name,Last Name,Sex,Date of Birth,Province,OD,District,Commune,Sex at Birth,Gender Identity,Sexual Health Concerns,Had Sex Past 6 Months,Partner Male,Partner Female,Partner TGW,Number of Sexual Partners,Past 6 Months Practices,HIV Test Past 6 Months,HIV Test Result,Risk Screening Result,Sex with HIV Partner,Sex without Condom,STI Symptoms,Syphilis Positive,Receive Money for Sex,Paid for Sex,Injected Drug Shared Needle,Alcohol Drug Before Sex,Group Sex Chemsex,Currently on PrEP,Last HIV Test Date,Abortion,Forced Sex,Risk Screening Score,None of Above,Ever on PrEP
-TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,Commune A,Male,Male,Yes,Yes,Yes,No,No,2,Yes,Yes,Negative,Medium Risk,false,true,false,false,false,false,true,false,false,false,2024-01-15,false,false,15,false,false`
+TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,Commune A,Male,Male,Yes,Yes,Yes,No,No,2,Yes,Yes,Negative,Medium,false,true,false,false,false,false,true,false,false,false,2024-01-15,false,false,45,false,false`
 
             const processResult = await processCSVForImport(testCSV, engine, config)
             
@@ -562,7 +562,7 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
             past6MonthsPractices: 'Yes',
             hivTestPast6Months: 'Yes',
             hivTestResult: 'Negative',
-            riskScreeningResult: 'Medium Risk',
+            riskScreeningResult: 'Medium',
             sexWithHIVPartner: 'false',
             sexWithoutCondom: 'true',
             stiSymptoms: 'false',
@@ -576,7 +576,7 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
             lastHivTestDate: '2024-01-15',
             abortion: 'false',
             forcedSex: 'false',
-            riskScreeningScore: '15',
+            riskScreeningScore: '45',
             noneOfAbove: 'false',
             everOnPrep: 'false',
             riskLevel: ''
@@ -605,7 +605,7 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
             past6MonthsPractices: 'Yes',
             hivTestPast6Months: 'Yes',
             hivTestResult: 'Negative',
-            riskScreeningResult: 'Low Risk',
+            riskScreeningResult: 'Low',
             sexWithHIVPartner: 'false',
             sexWithoutCondom: 'false',
             stiSymptoms: 'false',
@@ -619,7 +619,7 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
             lastHivTestDate: '2024-02-20',
             abortion: 'false',
             forcedSex: 'false',
-            riskScreeningScore: '8',
+            riskScreeningScore: '12',
             noneOfAbove: 'false',
             everOnPrep: 'false',
             riskLevel: ''

@@ -5,7 +5,7 @@ import { useLocation, useNavigate, Outlet, Link } from 'react-router-dom'
 
 import { LuActivity } from 'react-icons/lu'
 import { Badge } from './ui/badge'
-import { Shield, Upload, ChevronDown, User, Bell, Settings, Search, FileText } from 'lucide-react'
+import { Shield, Upload, ChevronDown, User, Bell, Settings, Search, FileText, TestTube } from 'lucide-react'
 import logoImage from '../assets/logo.png'
 
 // Logo fallback removed - now using proper logo import
@@ -67,13 +67,13 @@ const Layout = () => {
     }
 
     const menuItems = [
-        // { 
-        //     id: 'risk-screening', 
-        //     label: i18n.t('Risk Screening'), 
-        //     icon: <Shield className="w-4 h-4" />, 
-        //     path: '/',
-        //     description: i18n.t('Comprehensive STI risk assessment and data entry'),
-        // },
+        { 
+            id: 'risk-screening-tool', 
+            label: i18n.t('Risk Screening'), 
+            icon: <Shield className="w-4 h-4" />, 
+            path: '/risk-screening-tool',
+            description: i18n.t('Comprehensive STI risk assessment and data entry'),
+        },
         { 
             id: 'import-tool', 
             label: i18n.t('Data Import'), 
@@ -87,6 +87,13 @@ const Layout = () => {
             icon: <FileText className="w-4 h-4" />, 
             path: '/records-list',
             description: i18n.t('View and manage all screening records'),
+        },
+        { 
+            id: 'api-tests', 
+            label: i18n.t('API Tests'), 
+            icon: <TestTube className="w-4 h-4" />, 
+            path: '/api-tests',
+            description: i18n.t('Test all CRUD operations (GET, POST, PUT, DELETE)'),
         }
     ]
 

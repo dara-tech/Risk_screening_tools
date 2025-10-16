@@ -82,6 +82,182 @@ export const config = {
         'Transgender': 'Transgender',
         'Non-binary': 'Non-binary',
         'Other': 'Other'
+      },
+      sexualHealthConcerns: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      hadSexPast6Months: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      partnerMale: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      partnerFemale: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      partnerTGW: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      sexWithoutCondom: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      sexWithHIVPartner: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      stiSymptoms: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      syphilisPositive: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      hivTestPast6Months: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      hivTestResult: {
+        'Positive': 'Positive',
+        'Negative': 'Negative',
+        'Unknown': 'Unknown'
+      },
+      currentlyOnPrep: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No',
+        '10': 'Yes',
+        '0': 'No',
+        10: 'Yes',
+        0: 'No'
+      },
+      everOnPrep: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'Never Know': 'Never Know',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No',
+        '12': 'Never Know',
+        '10': 'Yes',
+        '0': 'No',
+        12: 'Never Know',
+        10: 'Yes',
+        0: 'No'
+      },
+      receiveMoneyForSex: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      paidForSex: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      injectedDrugSharedNeedle: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      alcoholDrugBeforeSex: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      groupSexChemsex: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      abortion: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      forcedSex: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
+      noneOfAbove: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
       }
     },
 

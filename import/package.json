@@ -9,6 +9,9 @@
     "build": "d2-app-scripts build",
     "start": "d2-app-scripts start",
     "test": "d2-app-scripts test",
+    "test:api": "node test-api.js",
+    "test:api:verbose": "node test-api.js --verbose",
+    "test:api:help": "node test-api.js --help",
     "deploy": "d2-app-scripts deploy"
   },
   "dependencies": {

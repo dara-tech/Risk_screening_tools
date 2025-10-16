@@ -11,9 +11,8 @@ import { config } from '../lib/config'
 import BasicInformation from './forms/BasicInformation'
 import RiskAssessment from './forms/RiskAssessment'
 import ClinicalData from './forms/ClinicalData'
-import RiskCalculation from './forms/RiskCalculation'
 import Summary from './forms/Summary'
-import { Calculator, Shield, Target, User } from 'lucide-react'
+import { Shield, Target, User } from 'lucide-react'
 
 // Import new components
 import Header from './Header'
@@ -29,6 +28,7 @@ const RiskScreeningTool = () => {
     const location = useLocation()
     const [mode, setMode] = useState('create') // 'create', 'edit', 'view'
     const [originalRecordId, setOriginalRecordId] = useState(null)
+    const [hasLoadedEditData, setHasLoadedEditData] = useState(false) // Track if we've loaded edit data
     const [formData, setFormData] = useState({
         // Tracked Entity Attributes (Person Information)
         systemId: '',
@@ -109,95 +109,104 @@ const RiskScreeningTool = () => {
         fetchProgramTeiAttributes()
     }, [])
 
-    // Handle edit/view mode from navigation
+    // Handle edit/view mode from navigation - only run once when data is available
     useEffect(() => {
-        const handleEditViewMode = () => {
-            // Check for navigation state
-            if (location.state?.mode && location.state?.recordData) {
-                const { mode: navMode, recordData } = location.state
-                setMode(navMode)
-                setOriginalRecordId(recordData.id)
+        // Only load data if we haven't already loaded it and we have navigation state
+        if (!hasLoadedEditData && location.state?.mode && location.state?.recordData) {
+            const { mode: navMode, recordData } = location.state
+            
+            console.log('[EDIT MODE] Loading record data:', recordData)
+            console.log('[EDIT MODE] everOnPrep value:', recordData.everOnPrep)
+            console.log('[EDIT MODE] currentlyOnPrep value:', recordData.currentlyOnPrep)
+            
+            setMode(navMode)
+            setOriginalRecordId(recordData.id)
+            setHasLoadedEditData(true) // Mark as loaded to prevent re-loading
+            
+            // Populate form with record data - ensure all fields are properly mapped
+            const populatedData = {
+                // Tracked Entity Attributes
+                systemId: recordData.systemId || '',
+                uuic: recordData.uuic || '',
+                familyName: recordData.familyName || '',
+                lastName: recordData.lastName || '',
+                sex: recordData.sex || '',
+                dateOfBirth: recordData.dateOfBirth || '',
+                province: recordData.province || '',
+                od: recordData.od || '',
+                district: recordData.district || '',
+                commune: recordData.commune || '',
+                donor: recordData.donor || '',
+                ngo: recordData.ngo || '',
                 
-                // Populate form with record data
-                const populatedData = {
-                    // Tracked Entity Attributes
-                    systemId: recordData.systemId || '',
-                    uuic: recordData.uuic || '',
-                    familyName: recordData.familyName || '',
-                    lastName: recordData.lastName || '',
-                    sex: recordData.sex || '',
-                    dateOfBirth: recordData.dateOfBirth || '',
-                    province: recordData.province || '',
-                    od: recordData.od || '',
-                    district: recordData.district || '',
-                    commune: recordData.commune || '',
-                    
-                    // Program Stage Data Elements
-                    sexAtBirth: recordData.sexAtBirth || '',
-                    genderIdentity: recordData.genderIdentity || '',
-                    sexualHealthConcerns: recordData.sexualHealthConcerns || '',
-                    hadSexPast6Months: recordData.hadSexPast6Months || '',
-                    partnerMale: recordData.partnerMale || '',
-                    partnerFemale: recordData.partnerFemale || '',
-                    partnerTGW: recordData.partnerTGW || '',
-                    numberOfSexualPartners: recordData.numberOfSexualPartners || '',
-                    past6MonthsPractices: recordData.past6MonthsPractices || '',
-                    hivTestPast6Months: recordData.hivTestPast6Months || '',
-                    hivTestResult: recordData.hivTestResult || '',
-                    riskScreeningResult: recordData.riskScreeningResult || '',
-                    sexWithHIVPartner: recordData.sexWithHIVPartner || '',
-                    sexWithoutCondom: recordData.sexWithoutCondom || '',
-                    stiSymptoms: recordData.stiSymptoms || '',
-                    syphilisPositive: recordData.syphilisPositive || '',
-                    receiveMoneyForSex: recordData.receiveMoneyForSex || '',
-                    paidForSex: recordData.paidForSex || '',
-                    injectedDrugSharedNeedle: recordData.injectedDrugSharedNeedle || '',
-                    alcoholDrugBeforeSex: recordData.alcoholDrugBeforeSex || '',
-                    groupSexChemsex: recordData.groupSexChemsex || '',
-                    currentlyOnPrep: recordData.currentlyOnPrep || '',
-                    lastHivTestDate: recordData.lastHivTestDate || '',
-                    abortion: recordData.abortion || '',
-                    forcedSex: recordData.forcedSex || '',
-                    riskScreeningScore: recordData.riskScreeningScore || 0,
-                    noneOfAbove: recordData.noneOfAbove || '',
-                    everOnPrep: recordData.everOnPrep || '',
-                    
-                    // Calculated fields
-                    riskScore: recordData.riskScore || 0,
-                    riskLevel: recordData.riskLevel || '',
-                    riskFactors: recordData.riskFactors || [],
-                    recommendations: recordData.recommendations || []
-                }
+                // Program Stage Data Elements - ensure proper value mapping
+                sexAtBirth: recordData.sexAtBirth || '',
+                genderIdentity: recordData.genderIdentity || '',
+                sexualHealthConcerns: recordData.sexualHealthConcerns || '',
+                hadSexPast6Months: recordData.hadSexPast6Months || '',
+                partnerMale: recordData.partnerMale || '',
+                partnerFemale: recordData.partnerFemale || '',
+                partnerTGW: recordData.partnerTGW || '',
+                numberOfSexualPartners: recordData.numberOfSexualPartners || '',
+                past6MonthsPractices: recordData.past6MonthsPractices || '',
+                hivTestPast6Months: recordData.hivTestPast6Months || '',
+                hivTestResult: recordData.hivTestResult || '',
+                riskScreeningResult: recordData.riskScreeningResult || '',
+                sexWithHIVPartner: recordData.sexWithHIVPartner || '',
+                sexWithoutCondom: recordData.sexWithoutCondom || '',
+                stiSymptoms: recordData.stiSymptoms || '',
+                syphilisPositive: recordData.syphilisPositive || '',
+                receiveMoneyForSex: recordData.receiveMoneyForSex || '',
+                paidForSex: recordData.paidForSex || '',
+                injectedDrugSharedNeedle: recordData.injectedDrugSharedNeedle || '',
+                alcoholDrugBeforeSex: recordData.alcoholDrugBeforeSex || '',
+                groupSexChemsex: recordData.groupSexChemsex || '',
+                currentlyOnPrep: recordData.currentlyOnPrep || '',
+                lastHivTestDate: recordData.lastHivTestDate || '',
+                abortion: recordData.abortion || '',
+                forcedSex: recordData.forcedSex || '',
+                riskScreeningScore: recordData.riskScreeningScore || 0,
+                noneOfAbove: recordData.noneOfAbove || '',
+                everOnPrep: recordData.everOnPrep || '',
                 
-                setFormData(populatedData)
-                
-                // Set organization unit if available
-                if (recordData.orgUnit) {
-                    setSelectedOrgUnit(recordData.orgUnit)
-                }
-                
-                // Show appropriate message
-                if (navMode === 'edit') {
-                    showToast({
-                        title: 'Edit Mode',
-                        description: `Editing record: ${recordData.systemId || recordData.id}`,
-                        variant: 'default'
-                    })
-                } else if (navMode === 'view') {
-                    showToast({
-                        title: 'View Mode',
-                        description: `Viewing record: ${recordData.systemId || recordData.id}`,
-                        variant: 'default'
-                    })
-                }
-                
-                // Clear navigation state to prevent re-triggering
-                window.history.replaceState({}, document.title)
+                // Calculated fields
+                riskScore: recordData.riskScore || 0,
+                riskLevel: recordData.riskLevel || '',
+                riskFactors: recordData.riskFactors || [],
+                recommendations: recordData.recommendations || []
             }
+            
+            console.log('[EDIT MODE] Setting form data:', populatedData)
+            console.log('[EDIT MODE] everOnPrep in populatedData:', populatedData.everOnPrep)
+            console.log('[EDIT MODE] currentlyOnPrep in populatedData:', populatedData.currentlyOnPrep)
+            setFormData(populatedData)
+            
+            // Set organization unit if available
+            if (recordData.orgUnit) {
+                setSelectedOrgUnit(recordData.orgUnit)
+            }
+            
+            // Show appropriate message
+            if (navMode === 'edit') {
+                showToast({
+                    title: 'Edit Mode',
+                    description: `Editing record: ${recordData.systemId || recordData.id}`,
+                    variant: 'default'
+                })
+            } else if (navMode === 'view') {
+                showToast({
+                    title: 'View Mode',
+                    description: `Viewing record: ${recordData.systemId || recordData.id}`,
+                    variant: 'default'
+                })
+            }
+            
+            // Clean up navigation state after loading
+            setTimeout(() => {
+                window.history.replaceState({}, document.title)
+            }, 100)
         }
-        
-        handleEditViewMode()
-    }, [location.state, showToast])
+    }, [location.state, hasLoadedEditData, showToast])
 
     const fetchFormOptions = useCallback(async () => {
         try {
@@ -355,8 +364,23 @@ const RiskScreeningTool = () => {
                 } else if (elementName.includes('what is your sex at birth')) {
                     mappings.sexAtBirth = { id: dataElement.id, name: dataElement.name, valueType: dataElement.valueType }
                     labels.sexAtBirth = kmName
+                } else if (elementName.includes('ever on prep') || elementName.includes('ever used prep') || elementName.includes('ever used pr') || elementName.includes('ever on pr')) {
+                    mappings.everOnPrep = { id: dataElement.id, name: dataElement.name, valueType: dataElement.valueType }
+                    labels.everOnPrep = kmName
+                } else if (elementName.includes('currently on prep') || elementName.includes('currently using prep') || elementName.includes('currently using pr') || elementName.includes('currently on pr')) {
+                    mappings.currentlyOnPrep = { id: dataElement.id, name: dataElement.name, valueType: dataElement.valueType }
+                    labels.currentlyOnPrep = kmName
                 }
             })
+            
+            // Debug logging for field mappings
+            if (process.env.NODE_ENV === 'development') {
+                console.log('[DEBUG] Field mappings created:', mappings)
+                console.log('[DEBUG] PrEP mappings:', {
+                    everOnPrep: mappings.everOnPrep,
+                    currentlyOnPrep: mappings.currentlyOnPrep
+                })
+            }
             
             setFieldMappings(mappings)
             setKmLabels(labels)
@@ -697,6 +721,133 @@ const RiskScreeningTool = () => {
             const riskData = calculateRiskScore()
             const finalData = { ...formData, ...riskData }
             
+            // Check if we're in edit mode
+            if (mode === 'edit' && originalRecordId) {
+                // UPDATE EXISTING RECORD
+                console.log('[UPDATE] Editing existing event:', originalRecordId)
+                
+                // Get the record data from location state to access trackedEntityInstance
+                const trackedEntityInstanceId = location.state?.recordData?.trackedEntityInstance
+                
+                // 1) Update Tracked Entity Attributes if we have the TEI ID
+                if (trackedEntityInstanceId) {
+                    try {
+                        const teiAttributes = prepareTrackedEntityAttributes(finalData)
+                        const teiUpdatePayload = {
+                            trackedEntityInstance: trackedEntityInstanceId,
+                            trackedEntityType: config.program.trackedEntityType,
+                            orgUnit: orgUnitId,
+                            attributes: teiAttributes
+                        }
+                        
+                        console.log('[UPDATE] TEI payload:', teiUpdatePayload)
+                        await engine.mutate({
+                            resource: `trackedEntityInstances/${trackedEntityInstanceId}`,
+                            type: 'update',
+                            data: teiUpdatePayload
+                        })
+                        console.log('[UPDATE] TEI updated successfully')
+                    } catch (error) {
+                        console.error('[UPDATE] TEI update error:', error)
+                        // Continue with event update even if TEI update fails
+                    }
+                }
+                
+                // 2) Prepare data values for event update
+                if (!fieldMappings || Object.keys(fieldMappings).length === 0) {
+                    throw new Error('Field mappings not loaded. Please refresh the page and try again.')
+                }
+                
+                const dataValues = []
+                Object.entries(fieldMappings).forEach(([formField, mapping]) => {
+                    const deId = mapping.id
+                    const raw = finalData[formField]
+                    if (raw === undefined || raw === '') return
+                    
+                    // Debug logging for PrEP fields
+                    if (formField === 'everOnPrep' || formField === 'currentlyOnPrep') {
+                        console.log(`[DEBUG] Processing ${formField}:`, { raw, deId, valueType: mapping.valueType })
+                    }
+
+                    // Try to normalize value based on element type
+                    const options = dataElementOptionsById[deId] || []
+                    let value = raw
+
+                    // TRUE_ONLY: include only if truthy
+                    if ((mapping.valueType === 'TRUE_ONLY' || mapping.valueType === 'BOOLEAN') && typeof raw === 'string') {
+                        const v = raw.toLowerCase()
+                        if (mapping.valueType === 'TRUE_ONLY') {
+                            if (v === 'yes' || v === 'true') value = 'true'; else return
+                        } else {
+                            value = (v === 'yes' || v === 'true') ? 'true' : 'false'
+                        }
+                    }
+
+                    // Option sets: map label to option code if options present
+                    if (options.length > 0) {
+                        const lower = String(raw).toLowerCase()
+                        const match = options.find(o => o.code?.toLowerCase() === lower || o.name?.toLowerCase() === lower)
+                        if (match?.code) value = match.code
+                    }
+
+                    dataValues.push({ dataElement: deId, value: String(value) })
+                    
+                    // Debug logging for PrEP fields final values
+                    if (formField === 'everOnPrep' || formField === 'currentlyOnPrep') {
+                        console.log(`[DEBUG] Final value for ${formField}:`, String(value))
+                    }
+                })
+                
+                // 3) Update event
+                const updatePayload = {
+                    event: originalRecordId,
+                    program: config.program.id,
+                    programStage: config.program.stageId,
+                    orgUnit: orgUnitId,
+                    eventDate: finalData.eventDate || new Date().toISOString().split('T')[0],
+                    status: 'COMPLETED',
+                    dataValues
+                }
+                
+                console.log('[UPDATE] Event payload:', updatePayload)
+                const updateRes = await engine.mutate({
+                    resource: `events/${originalRecordId}`,
+                    type: 'update',
+                    data: updatePayload
+                })
+                
+                console.log('[UPDATE] Event response:', updateRes)
+                
+                showToast({ 
+                    title: 'Success', 
+                    description: `Record updated successfully!`,
+                    variant: 'success' 
+                })
+                setStatus({ type: 'success', message: 'Record updated in DHIS2' })
+                
+                // Reset mode and record ID
+                setMode('create')
+                setOriginalRecordId(null)
+                setHasLoadedEditData(false) // Reset so we can load another record for editing
+                
+                // Reset form
+                setFormData({
+                    systemId: '', uuic: '', familyName: '', lastName: '', sex: '', dateOfBirth: '',
+                    province: '', od: '', district: '', commune: '', sexAtBirth: '', genderIdentity: '',
+                    sexualHealthConcerns: '', hadSexPast6Months: '', partnerMale: '', partnerFemale: '',
+                    partnerTGW: '', numberOfSexualPartners: '', past6MonthsPractices: '', hivTestPast6Months: '',
+                    hivTestResult: '', riskScreeningResult: '', sexWithHIVPartner: '', sexWithoutCondom: '',
+                    stiSymptoms: '', syphilisPositive: '', receiveMoneyForSex: '', paidForSex: '',
+                    injectedDrugSharedNeedle: '', alcoholDrugBeforeSex: '', groupSexChemsex: '',
+                    currentlyOnPrep: '', lastHivTestDate: '', abortion: '', forcedSex: '',
+                    riskScreeningScore: 0, noneOfAbove: '', everOnPrep: '', riskScore: 0,
+                    riskLevel: '', riskFactors: [], recommendations: []
+                })
+                
+                return
+            }
+            
+            // CREATE NEW RECORD
             // Generate unique IDs (only if not already set)
             if (!finalData.systemId) {
                 finalData.systemId = `RISK_${Date.now()}_${Math.floor(Math.random() * 10000)}`
@@ -763,6 +914,11 @@ const RiskScreeningTool = () => {
                 const deId = mapping.id
                 const raw = finalData[formField]
                 if (raw === undefined || raw === '') return
+                
+                // Debug logging for PrEP fields
+                if (formField === 'everOnPrep' || formField === 'currentlyOnPrep') {
+                    console.log(`[DEBUG] Processing ${formField}:`, { raw, deId, valueType: mapping.valueType })
+                }
 
                 // Try to normalize value based on element type
                 const options = dataElementOptionsById[deId] || []
@@ -786,6 +942,11 @@ const RiskScreeningTool = () => {
                 }
 
                 dataValues.push({ dataElement: deId, value: String(value) })
+                
+                // Debug logging for PrEP fields final values
+                if (formField === 'everOnPrep' || formField === 'currentlyOnPrep') {
+                    console.log(`[DEBUG] Final value for ${formField}:`, String(value))
+                }
             })
             const eventDate = new Date().toISOString().split('T')[0]
             const eventPayload = {
@@ -900,6 +1061,17 @@ const RiskScreeningTool = () => {
         }
     }
 
+    // Helper function to display Yes/No values properly
+    const displayYesNo = (value) => {
+        if (value === 'Yes' || value === 'true' || value === true) return 'បាទ/ចាស'
+        if (value === 'No' || value === 'false' || value === false) return 'ទេ'
+        if (value === 'Never Know') return 'មិនដឹង' // Special case for everOnPrep Never Know
+        if (value === '10' || value === 10) return 'បាទ/ចាស' // Special case for PrEP
+        if (value === '0' || value === 0) return 'ទេ' // Special case for PrEP
+        if (value === '12' || value === 12) return 'មិនដឹង' // Special case for everOnPrep Never Know (numeric)
+        return value || 'មិនបានបញ្ជាក់'
+    }
+
     const renderAllSections = () => {
         const isViewMode = mode === 'view'
         const isEditMode = mode === 'edit'
@@ -962,21 +1134,6 @@ const RiskScreeningTool = () => {
                     />
                 </div>
 
-                {/* Section 4: Risk Calculation */}
-                {/* <div className="relative">
-                    <div className="absolute -left-4 top-0 w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-bold z-10">
-                        4
-                    </div>
-                    <RiskCalculation 
-                        formData={formData} 
-                        updateFormData={updateFormData}
-                        calculateRiskScore={calculateRiskScore}
-                        mode={mode}
-                        isViewMode={isViewMode}
-                        isEditMode={isEditMode}
-                        hideHeaders
-                    />
-                </div> */}
 
                 {/* Section 5: Summary */}
                 {/* <div className="relative">
@@ -1081,7 +1238,7 @@ const RiskScreeningTool = () => {
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
                                         <span className="text-red-700">៣. Have you ever concerns/worries about your sexual health?</span>
-                                        <span className="text-gray-900">{formData.sexualHealthConcerns || 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.sexualHealthConcerns)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -1095,19 +1252,19 @@ const RiskScreeningTool = () => {
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៤. Have you had sex(Oral, Anal or vaginal) in the past 6months?</span>
-                                        <span className="text-gray-900">{formData.hadSexPast6Months === 'Yes' ? 'បាទ/ចាស' : formData.hadSexPast6Months === 'No' ? 'ទេ' : 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.hadSexPast6Months)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៤.១ Your partner's sexual identify is Male</span>
-                                        <span className="text-gray-900">{formData.partnerMale === 'Yes' ? 'បាទ/ចាស' : formData.partnerMale === 'No' ? 'ទេ' : 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.partnerMale)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៤.២ Your partner's sexual identify is Female</span>
-                                        <span className="text-gray-900">{formData.partnerFemale === 'Yes' ? 'បាទ/ចាស' : formData.partnerFemale === 'No' ? 'ទេ' : 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.partnerFemale)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៤.៣ Your partner's sexual identify is TGW</span>
-                                        <span className="text-gray-900">{formData.partnerTGW === 'Yes' ? 'បាទ/ចាស' : formData.partnerTGW === 'No' ? 'ទេ' : 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.partnerTGW)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៥. How many sexual partner do you have?</span>
@@ -1115,55 +1272,55 @@ const RiskScreeningTool = () => {
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៦.៤ Sex without a condom</span>
-                                        <span className="text-gray-900">{formData.sexWithoutCondom === 'Yes' ? 'បាទ/ចាស' : formData.sexWithoutCondom === 'No' ? 'ទេ' : 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.sexWithoutCondom)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៦.៥ Have a STI symptom</span>
-                                        <span className="text-gray-900">{formData.stiSymptoms === 'Yes' ? 'បាទ/ចាស' : formData.stiSymptoms === 'No' ? 'ទេ' : 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.stiSymptoms)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៦.៣ Sex with known HIV+ partner(s)</span>
-                                        <span className="text-gray-900">{formData.sexWithHIVPartner === 'Yes' ? 'បាទ/ចាស' : formData.sexWithHIVPartner === 'No' ? 'ទេ' : 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.sexWithHIVPartner)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៦.១ Receive money or goods for sex</span>
-                                        <span className="text-gray-900">{formData.receiveMoneyForSex === 'Yes' ? 'បាទ/ចាស' : formData.receiveMoneyForSex === 'No' ? 'ទេ' : 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.receiveMoneyForSex)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៦.២ Paid for sex</span>
-                                        <span className="text-gray-900">{formData.paidForSex === 'Yes' ? 'បាទ/ចាស' : formData.paidForSex === 'No' ? 'ទេ' : 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.paidForSex)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៦.៦ Abortion</span>
-                                        <span className="text-gray-900">{formData.abortion === 'Yes' ? 'បាទ/ចាស' : formData.abortion === 'No' ? 'ទេ' : 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.abortion)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៦.៧ Alcohol/drug before sex</span>
-                                        <span className="text-gray-900">{formData.alcoholDrugBeforeSex === 'Yes' ? 'បាទ/ចាស' : formData.alcoholDrugBeforeSex === 'No' ? 'ទេ' : 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.alcoholDrugBeforeSex)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៦.៨ Joint high fun or group sex or chemsex</span>
-                                        <span className="text-gray-900">{formData.groupSexChemsex === 'Yes' ? 'បាទ/ចាស' : formData.groupSexChemsex === 'No' ? 'ទេ' : 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.groupSexChemsex)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៦.៩ Injected drug/shared needle</span>
-                                        <span className="text-gray-900">{formData.injectedDrugSharedNeedle === 'Yes' ? 'បាទ/ចាស' : formData.injectedDrugSharedNeedle === 'No' ? 'ទេ' : 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.injectedDrugSharedNeedle)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៦.១០ Non-Above</span>
-                                        <span className="text-gray-900">{formData.noneOfAbove === 'Yes' ? 'បាទ/ចាស' : formData.noneOfAbove === 'No' ? 'ទេ' : 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.noneOfAbove)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">៧. Have you ever forced to have sex against your wishes in past 6 months</span>
-                                        <span className="text-gray-900">{formData.forcedSex === 'Yes' ? 'បាទ/ចាស' : formData.forcedSex === 'No' ? 'ទេ' : 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.forcedSex)}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-green-700">១០. Have you ever on PrEP</span>
-                                        <span className="text-gray-900">{formData.everOnPrep || 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-green-700">៩. តើអ្នកធ្លាប់ប្រើប្រាស់ប្រីពដែរឬទេ? / Have you ever used PrEP?</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.everOnPrep)}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-green-700">៩. Currently on PrEP</span>
-                                        <span className="text-gray-900">{formData.currentlyOnPrep || 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-green-700">១០. កំពុងប្រើប្រាស់ប្រីព / Currently using PrEP</span>
+                                        <span className="text-gray-900">{displayYesNo(formData.currentlyOnPrep)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">១១. When did your last HIV test?</span>
@@ -1171,7 +1328,12 @@ const RiskScreeningTool = () => {
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-green-700">១២. Result of HIV test if you can tell?</span>
-                                        <span className="text-gray-900">{formData.hivTestResult || 'មិនបានបញ្ជាក់'}</span>
+                                        <span className="text-gray-900">
+                                            {formData.hivTestResult === 'Positive' ? 'Positive' : 
+                                             formData.hivTestResult === 'Negative' ? 'Negative' : 
+                                             formData.hivTestResult === 'Unknown' ? 'Unknown' : 
+                                             formData.hivTestResult ? formData.hivTestResult : 'មិនបានបញ្ជាក់'}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -1179,7 +1341,7 @@ const RiskScreeningTool = () => {
                             {/* Risk Assessment Results */}
                             <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
                                 <h4 className="font-semibold text-purple-900 mb-3 flex items-center space-x-2">
-                                    <Calculator className="w-4 h-4" />
+                                    <Target className="w-4 h-4" />
                                     <span>លទ្ធផលវាយតម្លៃកម្រិតប្រឈម / Risk Assessment Results</span>
                                 </h4>
                                 <div className="text-center mb-4">
