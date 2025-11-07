@@ -56,6 +56,91 @@ export const FORM_FIELD_LABELS = {
     riskLevel: 'Risk Level'
 }
 
+export const FORM_FIELD_LABELS_KH = {
+    systemId: 'លេខសម្គាល់ប្រព័ន្ធ',
+    uuic: 'លេខកូដអតិថិជន (UUIC)',
+    donor: 'អ្នកឧបត្ថម្ភ',
+    ngo: 'អង្គការ (NGO)',
+    familyName: 'ឈ្មោះ (នាមខ្លួន)',
+    lastName: 'នាមត្រកូល',
+    sex: 'ភេទ',
+    dateOfBirth: 'ថ្ងៃខែឆ្នាំកំណើត',
+    province: 'ខេត្ត',
+    od: 'ស្រុកសុខាភិបាល (OD)',
+    district: 'ស្រុក/ក្រុង',
+    commune: 'ឃុំ/សង្កាត់',
+    sexAtBirth: '១. តើភេទពីកំណើតរបស់អ្នកជាអ្វី?',
+    genderIdentity: '២. តើអ្នកកំណត់អត្តសញ្ញាណភេទរបស់អ្នកយ៉ាងដូចម្តេច?',
+    sexualHealthConcerns: '៣. តើអ្នកធ្លាប់ព្រួយបារម្ភអំពីសុខភាពផ្លូវភេទដែរឬទេ?',
+    hadSexPast6Months: '៤. តើអ្នកធ្លាប់រួមភេទក្នុង៦ខែចុងក្រោយដែរឬទេ?',
+    partnerMale: '៤.១ ដៃគូរបស់អ្នកមានអត្តសញ្ញាណជា ប្រុស',
+    partnerFemale: '៤.២ ដៃគូរបស់អ្នកមានអត្តសញ្ញាណជា ស្រី',
+    partnerTGW: '៤.៣ ដៃគូរបស់អ្នកមានអត្តសញ្ញាណជា TGW',
+    numberOfSexualPartners: '៥. តើអ្នកមានដៃគូរួមភេទប៉ុន្មាននាក់?',
+    past6MonthsPractices: '៦. ក្នុង៦ខែចុងក្រោយ តើអ្នកធ្លាប់មានអាកប្បកិរិយាខាងក្រោមដែរឬទេ?',
+    hivTestPast6Months: '៧. តើអ្នកធ្លាប់ធ្វើតេស្ត HIV ក្នុង៦ខែចុងក្រោយដែរឬទេ?',
+    hivTestResult: '៨. លទ្ធផលតេស្ត HIV របស់អ្នកជាអ្វី?',
+    riskScreeningResult: 'លទ្ធផលវាស់វែងហានិភ័យ',
+    sexWithHIVPartner: 'តើអ្នកធ្លាប់រួមភេទជាមួយដៃគូដែលដឹងថាមានមេរោគ HIV ដែរឬទេ?',
+    sexWithoutCondom: 'តើអ្នកធ្លាប់រួមភេទដោយគ្មានកុងដុំដែរឬទេ?',
+    stiSymptoms: 'តើអ្នកមានរោគសញ្ញាជំងឺឆ្លងតាមផ្លូវភេទដែរឬទេ?',
+    syphilisPositive: 'តើអ្នកធ្លាប់តេស្តស៊ីភីលីសវិជ្ជមានដែរឬទេ?',
+    receiveMoneyForSex: 'តើអ្នកធ្លាប់ទទួលប្រាក់ ឬទំនិញសម្រាប់រួមភេទដែរឬទេ?',
+    paidForSex: 'តើអ្នកធ្លាប់បង់ប្រាក់ដើម្បីរួមភេទដែរឬទេ?',
+    injectedDrugSharedNeedle: 'តើអ្នកធ្លាប់ចាក់ថ្នាំដោយប្រើម្ជុលរួមដែរឬទេ?',
+    alcoholDrugBeforeSex: 'តើអ្នកធ្លាប់ប្រើស្រា ឬគ្រឿងញៀនមុនរួមភេទដែរឬទេ?',
+    groupSexChemsex: 'តើអ្នកធ្លាប់រួមភេទជាក្រុម ឬ chemsex ដែរឬទេ?',
+    currentlyOnPrep: 'តើអ្នកកំពុងប្រើប្រាស់ PrEP ដែរឬទេ?',
+    lastHivTestDate: 'ថ្ងៃធ្វើតេស្ត HIV ចុងក្រោយ',
+    abortion: 'តើអ្នកធ្លាប់រំលូតកូនដែរឬទេ?',
+    forcedSex: 'តើអ្នកធ្លាប់ត្រូវបង្ខំឱ្យរួមភេទទាស់នឹងឆន្ទៈក្នុង៦ខែចុងក្រោយដែរឬទេ?',
+    riskScreeningScore: 'ពិន្ទុវាស់វែងហានិភ័យ',
+    noneOfAbove: 'គ្មានអ្វីខាងលើ',
+    everOnPrep: 'តើអ្នកធ្លាប់ប្រើប្រាស់ PrEP ដែរឬទេ?',
+    riskLevel: 'កម្រិតហានិភ័យ'
+}
+
+export const TEMPLATE_COLUMNS = [
+    { key: 'systemId', dataKey: 'systemId', labelEn: 'System ID', labelKh: 'System ID' },
+    { key: 'displayNo', dataKey: null, labelEn: 'No', labelKh: 'ល.រ' },
+    { key: 'displayMonth', dataKey: null, labelEn: 'Month', labelKh: 'ខែ' },
+    { key: 'displayYear', dataKey: null, labelEn: 'Year', labelKh: 'ឆ្នាំ' },
+    { key: 'donor', dataKey: 'donor', labelEn: 'Donor', labelKh: 'ម្ចាស់ជំនួយ' },
+    { key: 'ngo', dataKey: 'ngo', labelEn: 'NGO', labelKh: 'អង្គការ' },
+    { key: 'province', dataKey: 'province', labelEn: 'Province', labelKh: 'ខេត្ត' },
+    { key: 'od', dataKey: 'od', labelEn: 'Operational District', labelKh: 'ស្រុកប្រតិបត្តិ' },
+    { key: 'district', dataKey: 'district', labelEn: 'District', labelKh: 'ស្រុក/ខណ្ឌ' },
+    { key: 'lastHivTestDate', dataKey: 'lastHivTestDate', labelEn: 'Event Date', labelKh: 'កាលបរិច្ឆេទ (ថ្ងៃ ខែ ឆ្នាំ)' },
+    { key: 'commune', dataKey: 'commune', labelEn: 'Commune', labelKh: 'ឃុំ/សង្កាត់' },
+    { key: 'uuic', dataKey: 'uuic', labelEn: 'UUIC', labelKh: 'UUIC' },
+    { key: 'lastName', dataKey: 'lastName', labelEn: 'Last Name', labelKh: 'នាមត្រកូល' },
+    { key: 'familyName', dataKey: 'familyName', labelEn: 'Family Name', labelKh: 'នាមខ្លួន' },
+    { key: 'sex', dataKey: 'sex', labelEn: 'Sex', labelKh: 'ភេទ' },
+    { key: 'dateOfBirth', dataKey: 'dateOfBirth', labelEn: 'Date of Birth', labelKh: 'ថ្ងៃ ខែ ឆ្នាំកំណើត' },
+    { key: 'genderIdentity', dataKey: 'genderIdentity', labelEn: 'Gender Identity', labelKh: 'អត្តសញ្ញាណភេទ' },
+    { key: 'sexualHealthConcerns', dataKey: 'sexualHealthConcerns', labelEn: 'Sexual Health Concerns', labelKh: 'ក្នុងរយៈពេល ៦ខែចុងក្រោយនេះ តើអ្នកធ្លាប់បារម្ភអំពីសុខភាពផ្លូវភេទរបស់អ្នកដែរឬទេ?' },
+    { key: 'hadSexPast6Months', dataKey: 'hadSexPast6Months', labelEn: 'Had Sex Past 6 Months', labelKh: 'ក្នុងរយៈពេល ៦ខែចុងក្រោយនេះ តើអ្នកធ្លាប់បានរួមភេទ (តាមមាត់ ទ្វារមាស ឬតាមរុន្ធគូទ) ដែរឬទេ?' },
+    { key: 'partnerMale', dataKey: 'partnerMale', labelEn: 'Partner Male', labelKh: '១. ប្រុស' },
+    { key: 'partnerFemale', dataKey: 'partnerFemale', labelEn: 'Partner Female', labelKh: '២. ស្រី' },
+    { key: 'partnerTGW', dataKey: 'partnerTGW', labelEn: 'Partner TGW', labelKh: '៣. អ្នកប្លែងភេទ​ស្រី' },
+    { key: 'numberOfSexualPartners', dataKey: 'numberOfSexualPartners', labelEn: 'Number of Sexual Partners', labelKh: 'ជាមធ្យម តើអ្នកមានដៃគូរួមភេទផ្សេងគ្នាចំនួនប៉ុន្មាននាក់?' },
+    { key: 'sexWithHIVPartner', dataKey: 'sexWithHIVPartner', labelEn: 'Sex with HIV Partner', labelKh: '១. ដៃគូរួមភេទមានផ្ទុកមេរោគអេដស៍' },
+    { key: 'sexWithoutCondom', dataKey: 'sexWithoutCondom', labelEn: 'Sex without Condom', labelKh: '២. រួមភេទដោយមិនបានប្រើស្រោមអនាម័យ' },
+    { key: 'stiSymptoms', dataKey: 'stiSymptoms', labelEn: 'STI Symptoms', labelKh: '៣. ធ្លាប់មាន/កំពុងមានជំងឺកាមរោគ' },
+    { key: 'syphilisPositive', dataKey: 'syphilisPositive', labelEn: 'Syphilis Positive', labelKh: '៤. មានលទ្ធផលតេស្តមេរោគស្វាយវិជ្ជមាន' },
+    { key: 'receiveMoneyForSex', dataKey: 'receiveMoneyForSex', labelEn: 'Receive Money for Sex', labelKh: '៥. ធ្លាប់លក់ ឬដូរយកទំនិញក្នុងសេវាផ្លូវភេទ' },
+    { key: 'paidForSex', dataKey: 'paidForSex', labelEn: 'Paid for Sex', labelKh: '៦. ធ្លាប់ទិញសេវាផ្លូវភេទ' },
+    { key: 'injectedDrugSharedNeedle', dataKey: 'injectedDrugSharedNeedle', labelEn: 'Injected Drug Shared Needle', labelKh: '៧. ធ្លាប់ចាក់សារធាតុញៀន ឬប្រើម្ជុលរួមគ្នា' },
+    { key: 'alcoholDrugBeforeSex', dataKey: 'alcoholDrugBeforeSex', labelEn: 'Alcohol/Drug Before Sex', labelKh: '៨. ធ្លាប់ប្រើគ្រឿងស្រវឹង ឬសារធាតុញៀនមុនពេលរួមភេទ' },
+    { key: 'groupSexChemsex', dataKey: 'groupSexChemsex', labelEn: 'Group Sex/Chemsex', labelKh: '១០. ចូលរួមសកម្មភាពរួមភេទជាក្រុម ឬប្រើប្រាស់ថ្នាំជម្រុញចំណង់ផ្លូវភេទ' },
+    { key: 'noneOfAbove', dataKey: 'noneOfAbove', labelEn: 'None of Above', labelKh: '១១. មិនមានចំណុចទាំងអស់ខាងលើទេ' },
+    { key: 'forcedSex', dataKey: 'forcedSex', labelEn: 'Forced Sex', labelKh: 'ក្នុងរយៈពេល ៦ខែ ចុងក្រោយ តើអ្នកធ្លាប់ត្រូវបានគេបង្ខំដើម្បីការរួមភេទ​ដែរឬទេ?' },
+    { key: 'everOnPrep', dataKey: 'everOnPrep', labelEn: 'Ever on PrEP', labelKh: 'តើអ្នកធ្លាប់ប្រើប្រាស់ PrEP ដែរឬទេ?' },
+    { key: 'currentlyOnPrep', dataKey: 'currentlyOnPrep', labelEn: 'Currently on PrEP', labelKh: 'តើអ្នកកំពុងប្រើប្រាស់ PrEP ដែរឬទេ?' },
+    { key: 'hivTestPast6Months', dataKey: 'hivTestPast6Months', labelEn: 'HIV Test Past 6 Months', labelKh: 'តើអ្នកធ្លាប់ធ្វើតេស្តរកមេរោគអេដស៍ដែរឬទេក្នុងរយៈពេល ៦ខែ ចុងក្រោយ?' },
+    { key: 'hivTestResult', dataKey: 'hivTestResult', labelEn: 'HIV Test Result', labelKh: 'តើលទ្ធផលនៃការធ្វើតេស្តដូចម្តេចដែរ ប្រសិនបើអ្នកអាចប្រាប់បាន?' }
+]
+
 // Toggle verbose import logging here
 const IS_DEBUG = false
 
@@ -453,12 +538,22 @@ export const processCSVForImport = async (csvText, engine, config) => {
             })
         })
 
+        const expectedTranslationRow = TEMPLATE_COLUMNS.map(col => (col.labelKh || FORM_FIELD_LABELS_KH[col.dataKey ?? col.key] || '').trim())
+
         // Process each row
         for (let i = 1; i < lines.length; i++) {
             const row = lines[i]
             if (!row.trim()) continue
             
             const cells = row.split(',').map(c => c.trim().replace(/^"|"$/g, ''))
+
+            // Skip Khmer translation row if present
+            if (
+                cells.length === expectedTranslationRow.length &&
+                cells.every((cell, idx) => cell.trim() === expectedTranslationRow[idx])
+            ) {
+                continue
+            }
             const rowData = {}
             
             // Map headers to data (flexible, case/format-insensitive)
@@ -569,12 +664,54 @@ export const validateAndTransformRowData = async (rowData, rowNumber, config) =>
     booleanFields.forEach(field => {
         if (transformedData[field]) {
             const value = transformedData[field].toLowerCase()
-            if (value === 'yes' || value === 'true' || value === '1') {
-                transformedData[field] = 'true'
-            } else if (value === 'no' || value === 'false' || value === '0') {
-                transformedData[field] = 'false'
+            
+            // Special handling for everOnPrep which uses 10/11/12 codes
+            if (field === 'everOnPrep') {
+                if (value === 'yes' || value === 'true' || value === '10' || value === '1') {
+                    transformedData[field] = '10'
+                } else if (value === 'no' || value === 'false' || value === '11' || value === '0') {
+                    transformedData[field] = '11'
+                } else if (value === 'never know' || value === 'neverknow' || value === '12' || value === 'unknown') {
+                    transformedData[field] = '12'
+                } else {
+                    warnings.push(`Row ${rowNumber}: Ambiguous everOnPrep value: ${transformedData[field]}`)
+                }
+            } else if (field === 'sexualHealthConcerns') {
+                if (value === 'yes' || value === 'true' || value === '1') {
+                    transformedData[field] = 'true'
+                } else if (value === 'no' || value === 'false' || value === '0') {
+                    transformedData[field] = 'false'
+                } else {
+                    warnings.push(`Row ${rowNumber}: Ambiguous sexualHealthConcerns value: ${transformedData[field]}`)
+                }
+            } else if (field === 'sexWithoutCondom') {
+                if (value === 'yes' || value === 'true' || value === '1') {
+                    transformedData[field] = 'true'
+                } else if (value === 'no' || value === 'false' || value === '0') {
+                    transformedData[field] = 'false'
+                } else {
+                    warnings.push(`Row ${rowNumber}: Ambiguous sexWithoutCondom value: ${transformedData[field]}`)
+                }
+            } else if (field === 'currentlyOnPrep') {
+                if (value === 'yes' || value === 'true' || value === '1' || value === '10') {
+                    transformedData[field] = 'true'
+                } else if (value === 'no' || value === 'false' || value === '0') {
+                    transformedData[field] = 'false'
+                } else if (value === 'never know' || value === 'neverknow' || value === '12' || value === 'unknown') {
+                    transformedData[field] = ''
+                    warnings.push(`Row ${rowNumber}: currentlyOnPrep set to "Never Know" - field will be left blank`)
+                } else {
+                    warnings.push(`Row ${rowNumber}: Ambiguous currentlyOnPrep value: ${transformedData[field]}`)
+                }
             } else {
-                warnings.push(`Row ${rowNumber}: Ambiguous boolean value for "${field}": ${transformedData[field]}`)
+                // Convert to numeric: true -> 1, false -> 0 (for other boolean fields with numeric option sets)
+                if (value === 'yes' || value === 'true' || value === '1') {
+                    transformedData[field] = '1'
+                } else if (value === 'no' || value === 'false' || value === '0') {
+                    transformedData[field] = '0'
+                } else {
+                    warnings.push(`Row ${rowNumber}: Ambiguous boolean value for "${field}": ${transformedData[field]}`)
+                }
             }
         }
     })
@@ -798,6 +935,20 @@ export const createProgramStageDataValues = (data, config) => {
         config.mapping.programStageDataElements.noneOfAbove
     ])
 
+    const booleanElementIds = new Set([
+        config.mapping.programStageDataElements.sexWithHIVPartner,
+        config.mapping.programStageDataElements.receiveMoneyForSex,
+        config.mapping.programStageDataElements.paidForSex,
+        config.mapping.programStageDataElements.injectedDrugSharedNeedle,
+        config.mapping.programStageDataElements.alcoholDrugBeforeSex,
+        config.mapping.programStageDataElements.groupSexChemsex,
+        config.mapping.programStageDataElements.forcedSex,
+        config.mapping.programStageDataElements.currentlyOnPrep,
+        config.mapping.programStageDataElements.stiSymptoms,
+        config.mapping.programStageDataElements.sexualHealthConcerns,
+        config.mapping.programStageDataElements.sexWithoutCondom
+    ].filter(Boolean))
+
     Object.entries(eventMappings).forEach(([key, dataElementId]) => {
         // Skip invalid placeholder IDs
         if (dataElementId && dataElementId.includes('ID') && !dataElementId.match(/^[a-zA-Z0-9]{11}$/)) {
@@ -814,21 +965,79 @@ export const createProgramStageDataValues = (data, config) => {
         if (dataElementId && data[key] && dataElementId.match(/^[a-zA-Z0-9]{11}$/)) {
             let value = data[key]
             
-            // Normalize boolean values (like manual input)
-            if (typeof value === 'string') {
-                const v = value.toLowerCase()
-                if (v === 'yes' || v === 'true') {
+            // Special handling for boolean data elements that expect true/false
+            if (booleanElementIds.has(dataElementId)) {
+                if (typeof value === 'string') {
+                    const v = value.trim().toLowerCase()
+                    if (['never know', 'neverknow', '12', 'unknown', ''].includes(v)) {
+                        value = ''
+                    } else if (['1', 'yes', 'true'].includes(v)) {
+                        value = 'true'
+                    } else if (['0', 'no', 'false'].includes(v)) {
+                        value = 'false'
+                    }
+                } else if (value === 1) {
                     value = 'true'
-                } else if (v === 'no' || v === 'false') {
+                } else if (value === 0) {
                     value = 'false'
                 }
             }
+
+            if (value === '' || value === null || typeof value === 'undefined') {
+                console.log(`📁 [IMPORT] Skipping field ${key} - empty value after normalization`)
+                return
+            }
+
+            // Special handling for PrEP fields that use specific numeric codes
+            if (key === 'everOnPrep') {
+                // everOnPrep uses: 10=Yes, 11=No, 12=Never Know
+                if (typeof value === 'string') {
+                    const v = value.toLowerCase()
+                    if (v === 'yes' || v === 'true' || v === '10' || v === '1') {
+                        value = '10'
+                    } else if (v === 'no' || v === 'false' || v === '11' || v === '0') {
+                        value = '11'
+                    } else if (v === 'never know' || v === 'neverknow' || v === '12' || v === 'unknown') {
+                        value = '12'
+                    }
+                    // Keep numeric values as-is if already 10, 11, or 12
+                }
+            } else if (key === 'currentlyOnPrep') {
+                // currentlyOnPrep is a boolean data element (Yes/No)
+                if (typeof value === 'string') {
+                    const v = value.toLowerCase()
+                    if (['yes', 'true', '1', '10'].includes(v)) {
+                        value = 'true'
+                    } else if (['no', 'false', '0'].includes(v)) {
+                        value = 'false'
+                    }
+                }
+                if (value === 1 || value === 10) {
+                    value = 'true'
+                } else if (value === 0) {
+                    value = 'false'
+                }
+            } else if (!booleanElementIds.has(dataElementId)) {
+                // Normalize other boolean values - convert true/false to 1/0 for numeric option sets
+                if (typeof value === 'string') {
+                    const v = value.toLowerCase()
+                    if (v === 'yes' || v === 'true' || v === '1') {
+                        value = '1'
+                    } else if (v === 'no' || v === 'false' || v === '0') {
+                        value = '0'
+                    }
+                }
+            }
             
-            // For trueOnly data elements, only send when value is 'true'
+            // For trueOnly data elements, only send when value is '1' or 'true'
             if (trueOnlyElementIds.has(dataElementId)) {
-                if (value !== 'true') {
-                    console.log(`📁 [IMPORT] Skipping field ${key} - false not allowed for trueOnly (${dataElementId})`)
+                if (value !== '1' && value !== 'true') {
+                    console.log(`📁 [IMPORT] Skipping field ${key} - false/0 not allowed for trueOnly (${dataElementId})`)
                     return
+                }
+                // Normalize trueOnly to 'true' for DHIS2
+                if (value === '1') {
+                    value = 'true'
                 }
             }
 
@@ -903,9 +1112,9 @@ export const importRecordToDHIS2 = async (data, orgUnitId, engine, config) => {
             enrollments: [{
                 trackedEntityInstance: teiId,
                 program: config.program.id,
-                orgUnit: orgUnitId,
-                enrollmentDate: new Date().toISOString().split('T')[0],
-                incidentDate: new Date().toISOString().split('T')[0]
+        orgUnit: orgUnitId,
+        enrollmentDate: new Date().toISOString().split('T')[0],
+        incidentDate: data.dateOfBirth || new Date().toISOString().split('T')[0]
             }]
         }
 
@@ -993,7 +1202,7 @@ export const importRecordToDHIS2 = async (data, orgUnitId, engine, config) => {
                 const errorDetails = importSummary?.description || 'Unknown error'
                 console.error('📁 [IMPORT] Event creation failed:', errorDetails)
                 console.error('📁 [IMPORT] Event import summary:', importSummary)
-                
+
                 // Check for specific conflict errors in events
                 if (importSummary?.conflicts && importSummary.conflicts.length > 0) {
                     const conflictDetails = importSummary.conflicts.map(c => c.value).join(', ')

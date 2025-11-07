@@ -69,49 +69,6 @@ const BasicInformation = ({
         })
     }, [calculateDateOfBirth, updateFormData])
 
-    // Auto-generate UUIC in real-time when required fields change
-    const autoGenerateUUIC = useCallback(() => {
-        const { familyName, lastName, sex, dateOfBirth } = formData
-        console.log('Auto-generating UUIC with:', { familyName, lastName, sex, dateOfBirth })
-
-        if (familyName && lastName && sex && dateOfBirth) {
-            try {
-                // For Khmer names: familyName = first name, lastName = last name
-                // Extract first 2 consonant characters from last name (remove vowels)
-                const lastNamePart = extractConsonants(lastName, 2)
-                
-                // Extract first 2 consonant characters from first name (remove vowels)
-                const firstNamePart = extractConsonants(familyName, 2)
-                
-                // Sex: 1 for Male, 2 for Female
-                const sexPart = sex === 'Male' ? '1' : sex === 'Female' ? '2' : ''
-                
-                // Parse date of birth
-                const date = new Date(dateOfBirth)
-                const day = date.getDate().toString().padStart(2, '0')
-                const month = (date.getMonth() + 1).toString().padStart(2, '0')
-                const year = date.getFullYear().toString().slice(-2) // Last 2 digits
-                
-                // Combine all parts: [Last Name] [First Name] [Sex] [Day] [Month] [Year]
-                const calculatedUUIC = `${lastNamePart}${firstNamePart}${sexPart}${day}${month}${year}`
-                console.log('UUIC Components:', {
-                    lastNamePart,
-                    firstNamePart,
-                    sexPart,
-                    day,
-                    month,
-                    year,
-                    calculatedUUIC
-                })
-                updateFormData({ uuic: calculatedUUIC })
-            } catch (error) {
-                console.error('Error auto-generating UUIC:', error)
-            }
-        } else {
-            console.log('Missing required fields for UUIC generation')
-        }
-    }, [formData, updateFormData])
-
     // Helper function to extract consonants from Khmer names
     const extractConsonants = useCallback((name, count) => {
         if (!name) return ''
@@ -141,14 +98,47 @@ const BasicInformation = ({
             consonants = name.substring(0, count)
         }
         
-        console.log(`Extracted consonants from "${name}": "${consonants}"`)
         return consonants
     }, [])
 
+    // Auto-generate UUIC in real-time when required fields change
+    const autoGenerateUUIC = useCallback((familyName, lastName, sex, dateOfBirth, currentUUIC) => {
+        if (familyName && lastName && sex && dateOfBirth) {
+            try {
+                // For Khmer names: familyName = first name, lastName = last name
+                // Extract first 2 consonant characters from last name (remove vowels)
+                const lastNamePart = extractConsonants(lastName, 2)
+                
+                // Extract first 2 consonant characters from first name (remove vowels)
+                const firstNamePart = extractConsonants(familyName, 2)
+                
+                // Sex: 1 for Male, 2 for Female
+                const sexPart = sex === 'Male' ? '1' : sex === 'Female' ? '2' : ''
+                
+                // Parse date of birth
+                const date = new Date(dateOfBirth)
+                const day = date.getDate().toString().padStart(2, '0')
+                const month = (date.getMonth() + 1).toString().padStart(2, '0')
+                const year = date.getFullYear().toString().slice(-2) // Last 2 digits
+                
+                // Combine all parts: [Last Name] [First Name] [Sex] [Day] [Month] [Year]
+                const calculatedUUIC = `${lastNamePart}${firstNamePart}${sexPart}${day}${month}${year}`
+                
+                // Only update if the UUIC would be different (prevent infinite loop)
+                if (currentUUIC !== calculatedUUIC) {
+                    updateFormData({ uuic: calculatedUUIC })
+                }
+            } catch (error) {
+                console.error('Error auto-generating UUIC:', error)
+            }
+        }
+    }, [extractConsonants, updateFormData])
+
     // Auto-generate UUIC when required fields change
     useEffect(() => {
-        autoGenerateUUIC()
-    }, [formData.familyName, formData.lastName, formData.sex, formData.dateOfBirth, autoGenerateUUIC])
+        autoGenerateUUIC(formData.familyName, formData.lastName, formData.sex, formData.dateOfBirth, formData.uuic)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.familyName, formData.lastName, formData.sex, formData.dateOfBirth]) // Don't include autoGenerateUUIC to prevent loop
 
 
 

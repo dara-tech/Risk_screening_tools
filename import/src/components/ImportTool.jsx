@@ -17,7 +17,7 @@ import {
     importRecordToDHIS2 
 } from '../lib/dhis2FormData'
 import ConnectionStatus from './ConnectionStatus'
-import { FORM_FIELD_ORDER, FORM_FIELD_LABELS } from '../lib/dhis2FormData'
+import { FORM_FIELD_ORDER, FORM_FIELD_LABELS, FORM_FIELD_LABELS_KH, TEMPLATE_COLUMNS } from '../lib/dhis2FormData'
 
 const ImportTool = () => {
     const [selectedFile, setSelectedFile] = useState(null)
@@ -52,6 +52,8 @@ const ImportTool = () => {
         const ts = new Date().toISOString()
         setLogs(prev => [...prev, { ts, level, message }])
     }
+
+    const templateColumns = TEMPLATE_COLUMNS
 
     const clearLogs = () => setLogs([])
 
@@ -534,8 +536,9 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
         const timestamp = Date.now()
 
         // Build header from canonical form order and labels (exclude age in template)
-        const exportOrder = FORM_FIELD_ORDER.filter(k => k !== 'age')
-        const headers = exportOrder.map(k => FORM_FIELD_LABELS[k] || k).join(',')
+        const exportColumns = TEMPLATE_COLUMNS
+        const englishHeaders = exportColumns.map(col => col.labelEn || FORM_FIELD_LABELS[col.dataKey ?? col.key] || col.key)
+        const khmerHeaders = exportColumns.map(col => col.labelKh || FORM_FIELD_LABELS_KH[col.dataKey ?? col.key] || '')
 
         // Example rows mapped by canonical keys (derived values left empty)
         const sample1 = {
@@ -563,22 +566,22 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
             hivTestPast6Months: 'Yes',
             hivTestResult: 'Negative',
             riskScreeningResult: 'Medium',
-            sexWithHIVPartner: 'false',
-            sexWithoutCondom: 'true',
-            stiSymptoms: 'false',
-            syphilisPositive: 'false',
-            receiveMoneyForSex: 'false',
-            paidForSex: 'false',
-            injectedDrugSharedNeedle: 'false',
-            alcoholDrugBeforeSex: 'true',
-            groupSexChemsex: 'false',
-            currentlyOnPrep: 'false',
+            sexWithHIVPartner: 'No',
+            sexWithoutCondom: 'Yes',
+            stiSymptoms: 'No',
+            syphilisPositive: 'No',
+            receiveMoneyForSex: 'No',
+            paidForSex: 'No',
+            injectedDrugSharedNeedle: 'No',
+            alcoholDrugBeforeSex: 'Yes',
+            groupSexChemsex: 'No',
+            currentlyOnPrep: 'Yes',
             lastHivTestDate: '2024-01-15',
-            abortion: 'false',
-            forcedSex: 'false',
+            abortion: 'No',
+            forcedSex: 'No',
             riskScreeningScore: '45',
-            noneOfAbove: 'false',
-            everOnPrep: 'false',
+            noneOfAbove: 'No',
+            everOnPrep: 'Yes',
             riskLevel: ''
         }
         const sample2 = {
@@ -606,39 +609,89 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
             hivTestPast6Months: 'Yes',
             hivTestResult: 'Negative',
             riskScreeningResult: 'Low',
-            sexWithHIVPartner: 'false',
-            sexWithoutCondom: 'false',
-            stiSymptoms: 'false',
-            syphilisPositive: 'false',
-            receiveMoneyForSex: 'false',
-            paidForSex: 'false',
-            injectedDrugSharedNeedle: 'false',
-            alcoholDrugBeforeSex: 'false',
-            groupSexChemsex: 'false',
-            currentlyOnPrep: 'false',
+            sexWithHIVPartner: 'No',
+            sexWithoutCondom: 'No',
+            stiSymptoms: 'No',
+            syphilisPositive: 'No',
+            receiveMoneyForSex: 'No',
+            paidForSex: 'No',
+            injectedDrugSharedNeedle: 'No',
+            alcoholDrugBeforeSex: 'No',
+            groupSexChemsex: 'No',
+            currentlyOnPrep: 'No',
             lastHivTestDate: '2024-02-20',
-            abortion: 'false',
-            forcedSex: 'false',
+            abortion: 'No',
+            forcedSex: 'No',
             riskScreeningScore: '12',
-            noneOfAbove: 'false',
-            everOnPrep: 'false',
+            noneOfAbove: 'No',
+            everOnPrep: '',
+            riskLevel: ''
+        }
+        const sample3 = {
+            systemId: `SYS_${timestamp}_003`,
+            uuic: `UUIC_${timestamp}_003`,
+            donor: 'Donor 3',
+            ngo: 'NGO 3',
+            familyName: 'Johnson',
+            lastName: 'Michael',
+            sex: 'Male',
+            dateOfBirth: '1992-11-10',
+            province: 'Siem Reap',
+            od: 'OD003',
+            district: 'District 3',
+            commune: 'Commune C',
+            sexAtBirth: 'Male',
+            genderIdentity: 'Male',
+            sexualHealthConcerns: 'No',
+            hadSexPast6Months: 'No',
+            partnerMale: 'No',
+            partnerFemale: 'No',
+            partnerTGW: 'No',
+            numberOfSexualPartners: '0',
+            past6MonthsPractices: 'No',
+            hivTestPast6Months: 'No',
+            hivTestResult: 'Unknown',
+            riskScreeningResult: 'Low',
+            sexWithHIVPartner: 'No',
+            sexWithoutCondom: 'No',
+            stiSymptoms: 'No',
+            syphilisPositive: 'No',
+            receiveMoneyForSex: 'No',
+            paidForSex: 'No',
+            injectedDrugSharedNeedle: 'No',
+            alcoholDrugBeforeSex: 'No',
+            groupSexChemsex: 'No',
+            currentlyOnPrep: 'No',
+            lastHivTestDate: '',
+            abortion: 'No',
+            forcedSex: 'No',
+            riskScreeningScore: '5',
+            noneOfAbove: 'No',
+            everOnPrep: 'Never Know',
             riskLevel: ''
         }
 
-        const rowToCsv = (row) => exportOrder.map(k => {
-            const v = row[k] ?? ''
+        const rowToCsv = (row) => exportColumns.map(col => {
+            const dataKey = col.dataKey
+            const v = dataKey ? (row[dataKey] ?? '') : ''
             // escape quotes and commas if needed
             const s = String(v)
             return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
         }).join(',')
 
-        const content = [headers, rowToCsv(sample1), rowToCsv(sample2)].join('\n')
+        const content = [
+            englishHeaders.join(','),
+            khmerHeaders.join(','),
+            rowToCsv(sample1),
+            rowToCsv(sample2),
+            rowToCsv(sample3)
+        ].join('\n')
 
         const blob = new Blob([content], { type: 'text/csv' })
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = 'sti_screening_template.csv'
+        a.download = 'risk_screening_template.csv'
         a.click()
         window.URL.revokeObjectURL(url)
         
@@ -1080,10 +1133,20 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                                                             <div className="text-xs text-gray-600 mb-1">
                                                                 Record {index + 1} - {record.data.systemId}
                                                             </div>
-                                                            <div className="grid grid-cols-2 gap-2 text-xs">
-                                                                {FORM_FIELD_ORDER.map((key) => (
-                                                                    <div key={key} className="truncate">
-                                                                        <strong>{FORM_FIELD_LABELS[key] || key}:</strong> {String(record.data[key] ?? 'N/A')}
+                                                            <div className="grid grid-cols-2 gap-3 text-xs">
+                                                                {templateColumns.map(({ key, labelEn, labelKh }) => (
+                                                                    <div key={key} className="truncate space-y-0.5">
+                                                                        <div className="font-semibold text-gray-800 leading-snug">
+                                                                            {labelEn || FORM_FIELD_LABELS[key] || key}
+                                                                        </div>
+                                                                        {(labelKh || FORM_FIELD_LABELS_KH[key]) && (
+                                                                            <div className="text-[11px] text-gray-500 leading-snug">
+                                                                                {labelKh || FORM_FIELD_LABELS_KH[key]}
+                                                                            </div>
+                                                                        )}
+                                                                        <div className="text-gray-700">
+                                                                            {String(record.data[key] ?? 'N/A')}
+                                                                        </div>
                                                                     </div>
                                                                 ))}
                                                             </div>

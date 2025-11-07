@@ -167,7 +167,21 @@ const RiskScreeningTool = () => {
                 forcedSex: recordData.forcedSex || '',
                 riskScreeningScore: recordData.riskScreeningScore || 0,
                 noneOfAbove: recordData.noneOfAbove || '',
-                everOnPrep: recordData.everOnPrep || '',
+                // Normalize everOnPrep value to match Select options
+                everOnPrep: (() => {
+                    const val = recordData.everOnPrep || ''
+                    // Map numeric codes to text
+                    if (val === '10' || val === 10) return 'Yes'
+                    if (val === '11' || val === 11) return 'No'
+                    if (val === '12' || val === 12) return 'Never Know'
+                    // Ensure it matches one of the Select options
+                    if (val === 'Yes' || val === 'No' || val === 'Never Know') return val
+                    // If it's a different value, try to normalize
+                    const lowerVal = String(val).toLowerCase()
+                    if (lowerVal === 'yes' || lowerVal === 'true') return 'Yes'
+                    if (lowerVal === 'no' || lowerVal === 'false') return 'No'
+                    return val // Return as-is if can't normalize
+                })(),
                 
                 // Calculated fields
                 riskScore: recordData.riskScore || 0,
@@ -216,7 +230,8 @@ const RiskScreeningTool = () => {
         } catch (error) {
             console.error('Error fetching form options:', error)
         }
-    }, [fetchFormData])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []) // Only run once on mount
 
     const fetchProgramStageData = useCallback(async () => {
         try {
@@ -1066,9 +1081,9 @@ const RiskScreeningTool = () => {
         if (value === 'Yes' || value === 'true' || value === true) return 'បាទ/ចាស'
         if (value === 'No' || value === 'false' || value === false) return 'ទេ'
         if (value === 'Never Know') return 'មិនដឹង' // Special case for everOnPrep Never Know
-        if (value === '10' || value === 10) return 'បាទ/ចាស' // Special case for PrEP
-        if (value === '0' || value === 0) return 'ទេ' // Special case for PrEP
-        if (value === '12' || value === 12) return 'មិនដឹង' // Special case for everOnPrep Never Know (numeric)
+        if (value === '10' || value === 10) return 'បាទ/ចាស' // Numeric code for Yes
+        if (value === '11' || value === 11) return 'ទេ' // Numeric code for No
+        if (value === '12' || value === 12) return 'មិនដឹង' // Numeric code for Never Know
         return value || 'មិនបានបញ្ជាក់'
     }
 

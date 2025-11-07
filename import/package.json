@@ -1,10 +1,10 @@
 {
   "name": "Import Risk Screening Data",
-  "version": "1.0.8",
+  "version": "1.0.10",
   "description": "Import Risk Screening Data",
   "license": "BSD-3-Clause",
   "private": true,
-  "icon": "./dhis2-app-icon.png",
+  "icon": "./import.png",
   "scripts": {
     "build": "d2-app-scripts build",
     "start": "d2-app-scripts start",

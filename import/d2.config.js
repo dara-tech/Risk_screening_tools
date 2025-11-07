@@ -11,7 +11,7 @@ const config = {
     locales: ['en', 'km'],
     
     // App icon configuration
-    icon: './dhis2-app-icon.png',
+    icon: './import.png',
 }
 
 module.exports = config

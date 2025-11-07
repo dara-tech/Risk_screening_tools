@@ -373,7 +373,12 @@ const ClinicalData = ({
                         tooltip="Whether client has ever taken PrEP medication"
                         status={formData.everOnPrep ? "success" : "default"}
                     >
-                        <Select value={formData.everOnPrep} onValueChange={(value) => handleInputChange('everOnPrep', value)}>
+                        <Select 
+                            value={formData.everOnPrep && ['Yes', 'No', 'Never Know'].includes(formData.everOnPrep) ? formData.everOnPrep : undefined} 
+                            onValueChange={(value) => {
+                                handleInputChange('everOnPrep', value || '')
+                            }}
+                        >
                             <SelectTrigger className="h-14 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all duration-300 hover:border-gray-300">
                                 <SelectValue placeholder="Select answer" />
                             </SelectTrigger>

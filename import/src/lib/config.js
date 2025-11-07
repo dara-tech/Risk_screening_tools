@@ -188,12 +188,12 @@ export const config = {
         'false': 'No',
         true: 'Yes',
         false: 'No',
-        '12': 'Never Know',
         '10': 'Yes',
-        '0': 'No',
-        12: 'Never Know',
+        '11': 'No',
+        '12': 'Never Know',
         10: 'Yes',
-        0: 'No'
+        11: 'No',
+        12: 'Never Know'
       },
       receiveMoneyForSex: {
         'Yes': 'Yes',

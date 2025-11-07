@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useToast } from '../components/ui/ui/toast'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import config from '../lib/config'
+import { fetchProgramStageDataElementsWithOptions } from '../lib/dhis2FormData'
 import Filters from '../components/records-list/Filters'
 import HeaderBar from '../components/records-list/HeaderBar'
 import Pagination from '../components/records-list/Pagination'
@@ -31,6 +32,9 @@ const RecordsList = () => {
     const [totalPages, setTotalPages] = useState(1)
     const [totalRecords, setTotalRecords] = useState(0)
     
+    // Option sets for mapping option codes to display names
+    const [dataElementOptionsById, setDataElementOptionsById] = useState({})
+    
     // Enhanced cache for API responses
     const [cache, setCache] = useState(new Map())
     const [lastCacheTime, setLastCacheTime] = useState(0)
@@ -55,6 +59,19 @@ const RecordsList = () => {
         document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
+
+    // Load option sets on mount
+    useEffect(() => {
+        const loadOptionSets = async () => {
+            try {
+                const { dataElementOptions } = await fetchProgramStageDataElementsWithOptions(engine, config.program.stageId)
+                setDataElementOptionsById(dataElementOptions || {})
+            } catch (error) {
+                console.error('Error loading option sets:', error)
+            }
+        }
+        loadOptionSets()
+    }, [engine])
 
     // Load data on mount
     useEffect(() => {
@@ -402,30 +419,28 @@ const RecordsList = () => {
                         }
                     }
                     else if (dv.dataElement === config.mapping.programStageDataElements.everOnPrep) {
-                        // Handle everOnPrep - may be stored as numeric values
-                        let value = dv.value
+                        // everOnPrep is an option set - map numeric codes or option codes to display name
+                        let displayValue = dv.value
+                        const options = dataElementOptionsById[config.mapping.programStageDataElements.everOnPrep] || []
                         
-                        // Debug logging for everOnPrep
-                        if (process.env.NODE_ENV === 'development') {
-                            console.log('[DEBUG] everOnPrep - Original value:', dv.value, 'Type:', typeof dv.value)
+                        // First try to map numeric codes (10=Yes, 11=No, 12=Never Know)
+                        if (dv.value === '10' || dv.value === 10) {
+                            displayValue = 'Yes'
+                        } else if (dv.value === '11' || dv.value === 11) {
+                            displayValue = 'No'
+                        } else if (dv.value === '12' || dv.value === 12) {
+                            displayValue = 'Never Know'
+                        } else if (options.length > 0) {
+                            // Find the option by code if not numeric
+                            const option = options.find(o => o.code === String(dv.value) || o.code === dv.value)
+                            if (option) {
+                                // Use the option name as display value
+                                displayValue = option.name
+                            }
                         }
                         
-                        // Map numeric values to text values if needed
-                        if (value === '12' || value === 12) {
-                            value = 'Never Know' // Map 12 to Never Know
-                        } else if (value === '10' || value === 10) {
-                            value = 'Yes' // Map 10 to Yes
-                        } else if (value === '0' || value === 0) {
-                            value = 'No' // Map 0 to No
-                        }
-                        
-                        // Use reverse mapping to get display value
-                        record.everOnPrep = reverseMapValue('everOnPrep', value) || value
-                        
-                        // Debug logging for final value
-                        if (process.env.NODE_ENV === 'development') {
-                            console.log('[DEBUG] everOnPrep - Mapped value:', value, 'Final value:', record.everOnPrep)
-                        }
+                        // Use reverse mapping as fallback
+                        record.everOnPrep = reverseMapValue('everOnPrep', displayValue) || displayValue
                     }
                     else if (dv.dataElement === config.mapping.programStageDataElements.receiveMoneyForSex) {
                         record.receiveMoneyForSex = reverseMapValue('receiveMoneyForSex', dv.value) || dv.value
