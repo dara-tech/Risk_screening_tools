@@ -17,7 +17,7 @@ const MonthPicker = ({ selectedYear, selectedMonth, onYearChange, onMonthSelect,
     }
 
     const handleMonthSelect = (monthIndex) => {
-        onMonthSelect(monthIndex + 1) // Convert to 1-based month
+        onMonthSelect(monthIndex + 1, currentYear) // Convert to 1-based month
         onClose()
     }
 

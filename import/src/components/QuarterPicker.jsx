@@ -12,7 +12,7 @@ const QuarterPicker = ({ selectedYear, selectedQuarter, onYearChange, onQuarterS
     }
 
     const handleQuarterSelect = (quarter) => {
-        onQuarterSelect(quarter)
+        onQuarterSelect(quarter, currentYear)
         onClose()
     }
 

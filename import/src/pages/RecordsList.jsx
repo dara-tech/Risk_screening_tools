@@ -26,18 +26,18 @@ const RecordsList = () => {
     const [showMonthPicker, setShowMonthPicker] = useState(false)
     const [orgUnits, setOrgUnits] = useState([])
     
-    // Pagination state
+    // Pagination state - reduced page size for better performance
     const [currentPage, setCurrentPage] = useState(1)
-    const [pageSize, setPageSize] = useState(50)
+    const [pageSize, setPageSize] = useState(25)
     const [totalPages, setTotalPages] = useState(1)
     const [totalRecords, setTotalRecords] = useState(0)
     
     // Option sets for mapping option codes to display names
     const [dataElementOptionsById, setDataElementOptionsById] = useState({})
     
-    // Enhanced cache for API responses
-    const [cache, setCache] = useState(new Map())
-    const [lastCacheTime, setLastCacheTime] = useState(0)
+    // Enhanced cache for API responses using refs to prevent dependency issues
+    const cacheRef = useRef(new Map())
+    const lastCacheTimeRef = useRef(0)
     const CACHE_DURATION = 15 * 60 * 1000 // 15 minutes (increased from 5)
 
     
@@ -136,11 +136,12 @@ const RecordsList = () => {
         const cacheKey = `${selectedOrgUnit}-${selectedPeriod}-${currentPage}-${pageSize}`
         const now = Date.now()
         
-        if (cache.has(cacheKey) && (now - lastCacheTime) < CACHE_DURATION) {
-            const cachedData = cache.get(cacheKey)
+        if (cacheRef.current.has(cacheKey) && (now - lastCacheTimeRef.current) < CACHE_DURATION) {
+            const cachedData = cacheRef.current.get(cacheKey)
             setRecords(cachedData.records)
             setTotalRecords(cachedData.totalRecords)
             setTotalPages(cachedData.totalPages)
+            console.log('🚀 [CACHE] Loaded from cache:', cachedData.records.length, 'records')
             return
         }
 
@@ -198,7 +199,6 @@ const RecordsList = () => {
                         page: currentPage,
                         pageSize: pageSize,
                         paging: true,
-                        includeAllChildren: true,
                         totalPages: true
                     }
                 }
@@ -206,24 +206,46 @@ const RecordsList = () => {
 
             const events = eventsResponse?.events?.events || []
             
-            // Only fetch TEIs for the events we actually have
+            // Early return if no events found
+            if (events.length === 0) {
+                setRecords([])
+                setTotalRecords(0)
+                setTotalPages(1)
+                return
+            }
+            
+            // Only fetch TEIs for the events we actually have - optimized batching
             let trackedEntities = []
             if (events.length > 0) {
-                const trackedEntityIds = events.map(event => event.trackedEntityInstance).filter(Boolean)
+                const trackedEntityIds = [...new Set(events.map(event => event.trackedEntityInstance).filter(Boolean))]
                 
                 if (trackedEntityIds.length > 0) {
-                    const teiResponse = await engine.query({
-                        trackedEntityInstances: {
-                            resource: 'trackedEntityInstances',
-                            params: {
-                                trackedEntityType: 'MCPQUTHX1Ze',
-                                trackedEntityInstance: trackedEntityIds.join(';'),
-                                fields: teiFields,
-                                paging: false
-                            }
-                        }
-                    })
-                    trackedEntities = teiResponse?.trackedEntityInstances?.trackedEntityInstances || []
+                    // Batch TEI requests for better performance (max 50 per request)
+                    const batchSize = 50
+                    const batches = []
+                    
+                    for (let i = 0; i < trackedEntityIds.length; i += batchSize) {
+                        const batch = trackedEntityIds.slice(i, i + batchSize)
+                        batches.push(
+                            engine.query({
+                                trackedEntityInstances: {
+                                    resource: 'trackedEntityInstances',
+                                    params: {
+                                        trackedEntityType: 'MCPQUTHX1Ze',
+                                        trackedEntityInstance: batch.join(';'),
+                                        fields: teiFields,
+                                        paging: false
+                                    }
+                                }
+                            })
+                        )
+                    }
+                    
+                    // Execute all batches in parallel
+                    const batchResults = await Promise.all(batches)
+                    trackedEntities = batchResults.flatMap(result => 
+                        result?.trackedEntityInstances?.trackedEntityInstances || []
+                    )
                 }
             }
             
@@ -233,7 +255,7 @@ const RecordsList = () => {
                 teiMap.set(tei.trackedEntityInstance, tei.attributes || [])
             })
             
-            // Pre-compute reverse mappings once (moved outside for better performance)
+            // Pre-compute reverse mappings and attribute lookups for better performance
             const valueMappings = config.mapping.valueMappings || {}
             const reverseMappings = Object.fromEntries(
                 Object.entries(valueMappings).map(([key, mapping]) => [
@@ -241,6 +263,10 @@ const RecordsList = () => {
                     Object.fromEntries(Object.entries(mapping).map(([k, v]) => [v, k]))
                 ])
             )
+            
+            // Create attribute mapping for faster lookups
+            const attrMapping = config.mapping.trackedEntityAttributes
+            const dataElementMapping = config.mapping.programStageDataElements
 
             // Optimized data processing
             const processedRecords = events.map(event => {
@@ -249,11 +275,7 @@ const RecordsList = () => {
                 // Use Map lookup instead of find() for O(1) performance
                 const attributes = teiMap.get(event.trackedEntityInstance) || []
                 
-                // Performance logging
-                if (process.env.NODE_ENV === 'development') {
-                    console.log(`[PERF] Processing event ${event.event} with ${dataValues.length} data values`)
-                    console.log(`[DEBUG] Data elements found:`, dataValues.map(dv => ({ de: dv.dataElement, value: dv.value })))
-                }
+                // Removed excessive logging for better performance
                 
                 const record = {
                     id: event.event,
@@ -307,20 +329,20 @@ const RecordsList = () => {
                     return reverseMapping?.[dhValue] || dhValue
                 }
 
-                // Map tracked entity attributes (personal information)
+                // Map tracked entity attributes (personal information) - optimized with direct mapping
                 attributes.forEach(attr => {
-                    if (attr.attribute === config.mapping.trackedEntityAttributes.System_ID) record.systemId = attr.value
-                    else if (attr.attribute === config.mapping.trackedEntityAttributes.UUIC) record.uuic = attr.value
-                    else if (attr.attribute === config.mapping.trackedEntityAttributes.Family_Name) record.familyName = attr.value
-                    else if (attr.attribute === config.mapping.trackedEntityAttributes.Last_Name) record.lastName = attr.value
-                    else if (attr.attribute === config.mapping.trackedEntityAttributes.Sex) {
-                        record.sex = reverseMapValue('sex', attr.value)
+                    switch (attr.attribute) {
+                        case attrMapping.System_ID: record.systemId = attr.value; break
+                        case attrMapping.UUIC: record.uuic = attr.value; break
+                        case attrMapping.Family_Name: record.familyName = attr.value; break
+                        case attrMapping.Last_Name: record.lastName = attr.value; break
+                        case attrMapping.Sex: record.sex = reverseMapValue('sex', attr.value); break
+                        case attrMapping.DOB: record.dateOfBirth = attr.value; break
+                        case attrMapping.Province: record.province = attr.value; break
+                        case attrMapping.OD: record.od = attr.value; break
+                        case attrMapping.District: record.district = attr.value; break
+                        case attrMapping.Commune: record.commune = attr.value; break
                     }
-                    else if (attr.attribute === config.mapping.trackedEntityAttributes.DOB) record.dateOfBirth = attr.value
-                    else if (attr.attribute === config.mapping.trackedEntityAttributes.Province) record.province = attr.value
-                    else if (attr.attribute === config.mapping.trackedEntityAttributes.OD) record.od = attr.value
-                    else if (attr.attribute === config.mapping.trackedEntityAttributes.District) record.district = attr.value
-                    else if (attr.attribute === config.mapping.trackedEntityAttributes.Commune) record.commune = attr.value
                 })
 
                 // Calculate age from date of birth
@@ -335,155 +357,134 @@ const RecordsList = () => {
                     record.age = age.toString()
                 }
 
-                // Map data values to record fields using actual DHIS2 data element IDs
+                // Map data values to record fields using optimized switch statement
                 dataValues.forEach(dv => {
                     if (!dv.value || dv.value === '') return // Skip empty values
                     
-                    // Debug logging for data mapping
-                    if (process.env.NODE_ENV === 'development') {
-                        console.log('[DEBUG] Mapping data element:', dv.dataElement, 'value:', dv.value)
-                    }
-                    
-                    // Program Stage Data Elements - Using actual field names
-                    if (dv.dataElement === config.mapping.programStageDataElements.genderIdentity) {
-                        record.genderIdentity = reverseMapValue('genderIdentity', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.sexAtBirth) {
-                        record.sexAtBirth = reverseMapValue('sex', dv.value) || dv.value
-                        // Only set sex if it's not already set from tracked entity attributes
-                        if (!record.sex || record.sex === '') {
-                            record.sex = reverseMapValue('sex', dv.value) || dv.value
-                        }
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.sexualHealthConcerns) {
-                        record.sexualHealthConcerns = reverseMapValue('sexualHealthConcerns', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.hadSexPast6Months) {
-                        record.hadSexPast6Months = reverseMapValue('hadSexPast6Months', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.partnerMale) {
-                        record.partnerMale = reverseMapValue('partnerMale', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.partnerFemale) {
-                        record.partnerFemale = reverseMapValue('partnerFemale', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.partnerTGW) {
-                        record.partnerTGW = reverseMapValue('partnerTGW', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.numberOfSexualPartners) {
-                        record.numberOfSexualPartners = dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.sexWithoutCondom) {
-                        record.sexWithoutCondom = reverseMapValue('sexWithoutCondom', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.sexWithHIVPartner) {
-                        record.sexWithHIVPartner = reverseMapValue('sexWithHIVPartner', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.stiSymptoms) {
-                        record.stiSymptoms = reverseMapValue('stiSymptoms', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.syphilisPositive) {
-                        record.syphilisPositive = reverseMapValue('syphilisPositive', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.hivTestPast6Months) {
-                        record.hivTestPast6Months = reverseMapValue('hivTestPast6Months', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.hivTestResult) {
-                        record.hivTestResult = reverseMapValue('hivTestResult', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.lastHivTestDate) {
-                        record.lastHivTestDate = dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.currentlyOnPrep) {
-                        // Handle special case where currentlyOnPrep might be stored as a number
-                        let value = dv.value
-                        
-                        // Debug logging for currentlyOnPrep
-                        if (process.env.NODE_ENV === 'development') {
-                            console.log('[DEBUG] currentlyOnPrep - Original value:', dv.value, 'Type:', typeof dv.value)
-                        }
-                        
-                        // Map numeric values to text values (Yes/No only)
-                        if (value === '10' || value === 10) {
-                            value = 'Yes' // Map 10 to Yes for PrEP
-                        } else if (value === '0' || value === 0) {
-                            value = 'No' // Map 0 to No for PrEP
-                        }
-                        
-                        // Use reverse mapping to get display value
-                        record.currentlyOnPrep = reverseMapValue('currentlyOnPrep', value) || value
-                        
-                        // Debug logging for final value
-                        if (process.env.NODE_ENV === 'development') {
-                            console.log('[DEBUG] currentlyOnPrep - Mapped value:', value, 'Final value:', record.currentlyOnPrep)
-                        }
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.everOnPrep) {
-                        // everOnPrep is an option set - map numeric codes or option codes to display name
-                        let displayValue = dv.value
-                        const options = dataElementOptionsById[config.mapping.programStageDataElements.everOnPrep] || []
-                        
-                        // First try to map numeric codes (10=Yes, 11=No, 12=Never Know)
-                        if (dv.value === '10' || dv.value === 10) {
-                            displayValue = 'Yes'
-                        } else if (dv.value === '11' || dv.value === 11) {
-                            displayValue = 'No'
-                        } else if (dv.value === '12' || dv.value === 12) {
-                            displayValue = 'Never Know'
-                        } else if (options.length > 0) {
-                            // Find the option by code if not numeric
-                            const option = options.find(o => o.code === String(dv.value) || o.code === dv.value)
-                            if (option) {
-                                // Use the option name as display value
-                                displayValue = option.name
+                    // Optimized data element mapping with switch for better performance
+                    switch (dv.dataElement) {
+                        case dataElementMapping.genderIdentity:
+                            record.genderIdentity = reverseMapValue('genderIdentity', dv.value) || dv.value
+                            break
+                        case dataElementMapping.sexAtBirth:
+                            record.sexAtBirth = reverseMapValue('sex', dv.value) || dv.value
+                            // Only set sex if it's not already set from tracked entity attributes
+                            if (!record.sex || record.sex === '') {
+                                record.sex = reverseMapValue('sex', dv.value) || dv.value
                             }
-                        }
-                        
-                        // Use reverse mapping as fallback
-                        record.everOnPrep = reverseMapValue('everOnPrep', displayValue) || displayValue
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.receiveMoneyForSex) {
-                        record.receiveMoneyForSex = reverseMapValue('receiveMoneyForSex', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.paidForSex) {
-                        record.paidForSex = reverseMapValue('paidForSex', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.injectedDrugSharedNeedle) {
-                        record.injectedDrugSharedNeedle = reverseMapValue('injectedDrugSharedNeedle', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.alcoholDrugBeforeSex) {
-                        record.alcoholDrugBeforeSex = reverseMapValue('alcoholDrugBeforeSex', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.groupSexChemsex) {
-                        record.groupSexChemsex = reverseMapValue('groupSexChemsex', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.abortion) {
-                        record.abortion = reverseMapValue('abortion', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.forcedSex) {
-                        record.forcedSex = reverseMapValue('forcedSex', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.noneOfAbove) {
-                        record.noneOfAbove = reverseMapValue('noneOfAbove', dv.value) || dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.riskScreeningResult) {
-                        record.riskScreeningResult = dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.riskScreeningScore) {
-                        record.riskScreeningScore = dv.value
-                    }
-                    else if (dv.dataElement === config.mapping.programStageDataElements.past6MonthsPractices) {
-                        record.past6MonthsPractices = dv.value
+                            break
+                        case dataElementMapping.sexualHealthConcerns:
+                            record.sexualHealthConcerns = reverseMapValue('sexualHealthConcerns', dv.value) || dv.value
+                            break
+                        case dataElementMapping.hadSexPast6Months:
+                            record.hadSexPast6Months = reverseMapValue('hadSexPast6Months', dv.value) || dv.value
+                            break
+                        case dataElementMapping.partnerMale:
+                            record.partnerMale = reverseMapValue('partnerMale', dv.value) || dv.value
+                            break
+                        case dataElementMapping.partnerFemale:
+                            record.partnerFemale = reverseMapValue('partnerFemale', dv.value) || dv.value
+                            break
+                        case dataElementMapping.partnerTGW:
+                            record.partnerTGW = reverseMapValue('partnerTGW', dv.value) || dv.value
+                            break
+                        case dataElementMapping.numberOfSexualPartners:
+                            record.numberOfSexualPartners = dv.value
+                            break
+                        case dataElementMapping.sexWithoutCondom:
+                            record.sexWithoutCondom = reverseMapValue('sexWithoutCondom', dv.value) || dv.value
+                            break
+                        case dataElementMapping.sexWithHIVPartner:
+                            record.sexWithHIVPartner = reverseMapValue('sexWithHIVPartner', dv.value) || dv.value
+                            break
+                        case dataElementMapping.stiSymptoms:
+                            record.stiSymptoms = reverseMapValue('stiSymptoms', dv.value) || dv.value
+                            break
+                        case dataElementMapping.syphilisPositive:
+                            record.syphilisPositive = reverseMapValue('syphilisPositive', dv.value) || dv.value
+                            break
+                        case dataElementMapping.hivTestPast6Months:
+                            record.hivTestPast6Months = reverseMapValue('hivTestPast6Months', dv.value) || dv.value
+                            break
+                        case dataElementMapping.hivTestResult:
+                            record.hivTestResult = reverseMapValue('hivTestResult', dv.value) || dv.value
+                            break
+                        case dataElementMapping.lastHivTestDate:
+                            record.lastHivTestDate = dv.value
+                            break
+                        case dataElementMapping.currentlyOnPrep:
+                            // Handle special case where currentlyOnPrep might be stored as a number
+                            let value = dv.value
+                            
+                            // Map numeric values to text values (Yes/No only)
+                            if (value === '10' || value === 10) {
+                                value = 'Yes' // Map 10 to Yes for PrEP
+                            } else if (value === '0' || value === 0) {
+                                value = 'No' // Map 0 to No for PrEP
+                            }
+                            
+                            // Use reverse mapping to get display value
+                            record.currentlyOnPrep = reverseMapValue('currentlyOnPrep', value) || value
+                            break
+                        case dataElementMapping.everOnPrep:
+                            // everOnPrep is an option set - map numeric codes or option codes to display name
+                            let displayValue = dv.value
+                            const options = dataElementOptionsById[dataElementMapping.everOnPrep] || []
+                            
+                            // First try to map numeric codes (10=Yes, 11=No, 12=Never Know)
+                            if (dv.value === '10' || dv.value === 10) {
+                                displayValue = 'Yes'
+                            } else if (dv.value === '11' || dv.value === 11) {
+                                displayValue = 'No'
+                            } else if (dv.value === '12' || dv.value === 12) {
+                                displayValue = 'Never Know'
+                            } else if (options.length > 0) {
+                                // Find the option by code if not numeric
+                                const option = options.find(o => o.code === String(dv.value) || o.code === dv.value)
+                                if (option) {
+                                    displayValue = option.name
+                                }
+                            }
+                            
+                            record.everOnPrep = reverseMapValue('everOnPrep', displayValue) || displayValue
+                            break
+                        case dataElementMapping.receiveMoneyForSex:
+                            record.receiveMoneyForSex = reverseMapValue('receiveMoneyForSex', dv.value) || dv.value
+                            break
+                        case dataElementMapping.paidForSex:
+                            record.paidForSex = reverseMapValue('paidForSex', dv.value) || dv.value
+                            break
+                        case dataElementMapping.injectedDrugSharedNeedle:
+                            record.injectedDrugSharedNeedle = reverseMapValue('injectedDrugSharedNeedle', dv.value) || dv.value
+                            break
+                        case dataElementMapping.alcoholDrugBeforeSex:
+                            record.alcoholDrugBeforeSex = reverseMapValue('alcoholDrugBeforeSex', dv.value) || dv.value
+                            break
+                        case dataElementMapping.groupSexChemsex:
+                            record.groupSexChemsex = reverseMapValue('groupSexChemsex', dv.value) || dv.value
+                            break
+                        case dataElementMapping.abortion:
+                            record.abortion = reverseMapValue('abortion', dv.value) || dv.value
+                            break
+                        case dataElementMapping.forcedSex:
+                            record.forcedSex = reverseMapValue('forcedSex', dv.value) || dv.value
+                            break
+                        case dataElementMapping.noneOfAbove:
+                            record.noneOfAbove = reverseMapValue('noneOfAbove', dv.value) || dv.value
+                            break
+                        case dataElementMapping.riskScreeningResult:
+                            record.riskScreeningResult = dv.value
+                            break
+                        case dataElementMapping.riskScreeningScore:
+                            record.riskScreeningScore = dv.value
+                            break
+                        case dataElementMapping.past6MonthsPractices:
+                            record.past6MonthsPractices = dv.value
+                            break
                     }
                 })
 
-                // Debug logging for final record
-                if (process.env.NODE_ENV === 'development') {
-                    console.log(`[DEBUG] Final record for event ${event.event}:`, {
-                        everOnPrep: record.everOnPrep,
-                        currentlyOnPrep: record.currentlyOnPrep
-                    })
-                }
+                // Record processing complete
                 
                 return record
             })
@@ -512,23 +513,18 @@ const RecordsList = () => {
             setTotalPages(totalPagesFromAPI)
             
             // Enhanced caching with longer duration
-            setCache(prev => {
-                const newCache = new Map(prev)
-                newCache.set(cacheKey, {
-                    records: processedRecords,
-                    totalRecords: totalRecordsFromAPI,
-                    totalPages: totalPagesFromAPI,
-                    timestamp: now
-                })
-                return newCache
+            cacheRef.current.set(cacheKey, {
+                records: processedRecords,
+                totalRecords: totalRecordsFromAPI,
+                totalPages: totalPagesFromAPI,
+                timestamp: now
             })
-            setLastCacheTime(now)
+            lastCacheTimeRef.current = now
             
-            showToast({
-                title: 'Success',
-                description: `Loaded ${processedRecords.length} records in ${loadTime}ms (Page ${currentPage} of ${totalPagesFromAPI})`,
-                variant: 'default'
-            })
+            // Only show toast for manual refresh, not automatic loads
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`🚀 [PERF] Loaded ${processedRecords.length} records in ${loadTime}ms (Page ${currentPage} of ${totalPagesFromAPI})`)
+            }
         } catch (error) {
             console.error('Error fetching records:', error)
             
@@ -552,7 +548,7 @@ const RecordsList = () => {
         } finally {
             setLoading(false)
         }
-    }, [engine, selectedOrgUnit, selectedPeriodType, selectedPeriod, currentPage, pageSize, showToast, cache, lastCacheTime, CACHE_DURATION])
+    }, [engine, selectedOrgUnit, selectedPeriodType, selectedPeriod, currentPage, pageSize, showToast, CACHE_DURATION])
 
     // Clear records and cache when filters change (optimized)
     useEffect(() => {
@@ -563,14 +559,14 @@ const RecordsList = () => {
         if (selectedOrgUnit) {
             const newCache = new Map()
             // Keep cache entries for other org units
-            cache.forEach((value, key) => {
+            cacheRef.current.forEach((value, key) => {
                 if (!key.startsWith(selectedOrgUnit)) {
                     newCache.set(key, value)
                 }
             })
-            setCache(newCache)
+            cacheRef.current = newCache
         }
-        setLastCacheTime(0)
+        lastCacheTimeRef.current = 0
     }, [selectedOrgUnit, selectedPeriod])
 
     // Clear period selections and cache when organization changes
@@ -581,8 +577,8 @@ const RecordsList = () => {
             setSelectedYear('')
             setSelectedQuarter(null)
             setSelectedMonth(null)
-            setCache(new Map()) // Clear cache when org unit changes
-            setLastCacheTime(0)
+            cacheRef.current = new Map() // Clear cache when org unit changes
+            lastCacheTimeRef.current = 0
         }
     }, [selectedOrgUnit])
 
@@ -618,10 +614,20 @@ const RecordsList = () => {
 
     const handleRefresh = () => {
         // Clear cache when manually refreshing
-        setCache(new Map())
-        setLastCacheTime(0)
+        cacheRef.current = new Map()
+        lastCacheTimeRef.current = 0
         setCurrentPage(1) // Reset to first page when manually loading
-        fetchRecords()
+        
+        // Show toast for manual refresh
+        setTimeout(() => {
+            fetchRecords().then(() => {
+                showToast({
+                    title: 'Refreshed',
+                    description: 'Data has been refreshed successfully',
+                    variant: 'default'
+                })
+            })
+        }, 100)
     }
 
     // Picker handlers
@@ -636,14 +642,18 @@ const RecordsList = () => {
         }
     }
 
-    const handleQuarterSelect = (quarter) => {
+    const handleQuarterSelect = (quarter, yearOverride) => {
+        const yearToUse = yearOverride ?? selectedYear ?? new Date().getFullYear()
+        setSelectedYear(yearToUse)
         setSelectedQuarter(quarter)
-        setSelectedPeriod(`${selectedYear}Q${quarter}`)
+        setSelectedPeriod(`${yearToUse}Q${quarter}`)
     }
 
-    const handleMonthSelect = (month) => {
+    const handleMonthSelect = (month, yearOverride) => {
+        const yearToUse = yearOverride ?? selectedYear ?? new Date().getFullYear()
+        setSelectedYear(yearToUse)
         setSelectedMonth(month)
-        setSelectedPeriod(`${selectedYear}${month.toString().padStart(2, '0')}`)
+        setSelectedPeriod(`${yearToUse}${month.toString().padStart(2, '0')}`)
     }
 
     const getPeriodDisplay = () => {
