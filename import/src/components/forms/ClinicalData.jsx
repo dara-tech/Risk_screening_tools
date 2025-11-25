@@ -146,6 +146,22 @@ const ClinicalData = ({
                             </SelectContent>
                         </Select>
                     </FieldWrapper>
+
+                    <FieldWrapper
+                        label={kmLabels.partnerTGM || "៤.៤ អត្តសញ្ញាណភេទដៃគូរបស់អ្នកគឺ TGM / Your partner's sexual identify is TGM"}
+                        tooltip="Whether the partner identifies as TGM (Transgender Male)"
+                        status={formData.partnerTGM ? "success" : "default"}
+                    >
+                        <Select value={formData.partnerTGM} onValueChange={(value) => handleInputChange('partnerTGM', value)}>
+                            <SelectTrigger className="h-14 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all duration-300 hover:border-gray-300">
+                                <SelectValue placeholder="Select answer" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white/95 backdrop-blur-md border border-gray-200 rounded-xl shadow-xl">
+                                <SelectItem value="Yes" className="hover:bg-blue-50 py-3">Yes</SelectItem>
+                                <SelectItem value="No" className="hover:bg-blue-50 py-3">No</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </FieldWrapper>
                 </div>
             </div>
 

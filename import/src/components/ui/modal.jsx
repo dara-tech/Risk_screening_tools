@@ -57,7 +57,7 @@ const Modal = ({
             <div className="flex min-h-full items-center justify-center p-4">
                 <div 
                     className={cn(
-                        "relative w-full transform overflow-hidden rounded-lg bg-white shadow-xl transition-all duration-300 ease-out",
+                        "relative w-full transform overflow-hidden rounded-none bg-white shadow-xl transition-all duration-300 ease-out",
                         sizeClasses[size],
                         className
                     )}
@@ -72,7 +72,7 @@ const Modal = ({
                             {showCloseButton && (
                                 <button
                                     onClick={onClose}
-                                    className="rounded-md p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                    className="rounded-none p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                                 >
                                     <X size={20} />
                                 </button>

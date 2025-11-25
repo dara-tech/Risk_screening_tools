@@ -123,6 +123,14 @@ export const config = {
         true: 'Yes',
         false: 'No'
       },
+      partnerTGM: {
+        'Yes': 'Yes',
+        'No': 'No',
+        'true': 'Yes',
+        'false': 'No',
+        true: 'Yes',
+        false: 'No'
+      },
       sexWithoutCondom: {
         'Yes': 'Yes',
         'No': 'No',
@@ -275,8 +283,12 @@ export const config = {
       'partnerFemale': 'TlXvK6qrt1b',
       // Partner TGW
       'partnerTGW': 'G4r3E6LI70l',
+      // Partner TGM
+      'partnerTGM': 'okL7Z9mXVnU',
       // Number of Sexual Partners
       'numberOfSexualPartners': 'qa4gp2GMQUA',
+      // Average Number of Different Sexual Partners (Past 6 Months)
+      'averageNumberOfSexualPartners': 'jrhBFeNLgs2',
       // Sex With HIV Partner
       'sexWithHIVPartner': 'bls0dsZMoRO',
       // Sex Without Condom

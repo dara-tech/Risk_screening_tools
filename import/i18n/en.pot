@@ -5,32 +5,14 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
-"POT-Creation-Date: 2025-11-07T07:34:24.491Z\n"
-"PO-Revision-Date: 2025-11-07T07:34:24.492Z\n"
+"POT-Creation-Date: 2025-11-17T04:38:59.606Z\n"
+"PO-Revision-Date: 2025-11-17T04:38:59.606Z\n"
 
 msgid "ERROR"
 msgstr "ERROR"
 
 msgid "Loading"
 msgstr "Loading"
-
-msgid "Risk Screening"
-msgstr "Risk Screening"
-
-msgid "Comprehensive STI risk assessment and data entry"
-msgstr "Comprehensive STI risk assessment and data entry"
-
-msgid "Data Import"
-msgstr "Data Import"
-
-msgid "Import STI screening data from CSV files"
-msgstr "Import STI screening data from CSV files"
-
-msgid "Records List"
-msgstr "Records List"
-
-msgid "View and manage all screening records"
-msgstr "View and manage all screening records"
 
 msgid "API Tests"
 msgstr "API Tests"

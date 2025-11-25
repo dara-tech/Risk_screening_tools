@@ -4,7 +4,7 @@ import { useDataEngine } from '@dhis2/app-runtime'
 export const FORM_FIELD_ORDER = [
     'systemId', 'uuic', 'donor', 'ngo', 'familyName', 'lastName', 'sex', 'dateOfBirth', 'province', 'od', 'district', 'commune',
     'sexAtBirth', 'genderIdentity', 'sexualHealthConcerns', 'hadSexPast6Months',
-    'partnerMale', 'partnerFemale', 'partnerTGW', 'numberOfSexualPartners', 'past6MonthsPractices',
+    'partnerMale', 'partnerFemale', 'partnerTGW', 'partnerTGM', 'numberOfSexualPartners', 'past6MonthsPractices',
     'hivTestPast6Months', 'hivTestResult', 'riskScreeningResult',
     'sexWithHIVPartner', 'sexWithoutCondom', 'stiSymptoms', 'syphilisPositive',
     'receiveMoneyForSex', 'paidForSex', 'injectedDrugSharedNeedle', 'alcoholDrugBeforeSex', 'groupSexChemsex',
@@ -32,6 +32,7 @@ export const FORM_FIELD_LABELS = {
     partnerMale: 'Partner Male',
     partnerFemale: 'Partner Female',
     partnerTGW: 'Partner TGW',
+    partnerTGM: 'Partner TGM',
     numberOfSexualPartners: 'Number of Sexual Partners',
     past6MonthsPractices: 'Past 6 Months Practices',
     hivTestPast6Months: 'HIV Test Past 6 Months',
@@ -76,6 +77,7 @@ export const FORM_FIELD_LABELS_KH = {
     partnerMale: '៤.១ ដៃគូរបស់អ្នកមានអត្តសញ្ញាណជា ប្រុស',
     partnerFemale: '៤.២ ដៃគូរបស់អ្នកមានអត្តសញ្ញាណជា ស្រី',
     partnerTGW: '៤.៣ ដៃគូរបស់អ្នកមានអត្តសញ្ញាណជា TGW',
+    partnerTGM: '៤.៤ ដៃគូរបស់អ្នកមានអត្តសញ្ញាណជា TGM',
     numberOfSexualPartners: '៥. តើអ្នកមានដៃគូរួមភេទប៉ុន្មាននាក់?',
     past6MonthsPractices: '៦. ក្នុង៦ខែចុងក្រោយ តើអ្នកធ្លាប់មានអាកប្បកិរិយាខាងក្រោមដែរឬទេ?',
     hivTestPast6Months: '៧. តើអ្នកធ្លាប់ធ្វើតេស្ត HIV ក្នុង៦ខែចុងក្រោយដែរឬទេ?',
@@ -123,6 +125,7 @@ export const TEMPLATE_COLUMNS = [
     { key: 'partnerMale', dataKey: 'partnerMale', labelEn: 'Partner Male', labelKh: '១. ប្រុស' },
     { key: 'partnerFemale', dataKey: 'partnerFemale', labelEn: 'Partner Female', labelKh: '២. ស្រី' },
     { key: 'partnerTGW', dataKey: 'partnerTGW', labelEn: 'Partner TGW', labelKh: '៣. អ្នកប្លែងភេទ​ស្រី' },
+    { key: 'partnerTGM', dataKey: 'partnerTGM', labelEn: 'Partner TGM', labelKh: '៤. អ្នកប្លែងភេទ​ប្រុស' },
     { key: 'numberOfSexualPartners', dataKey: 'numberOfSexualPartners', labelEn: 'Number of Sexual Partners', labelKh: 'ជាមធ្យម តើអ្នកមានដៃគូរួមភេទផ្សេងគ្នាចំនួនប៉ុន្មាននាក់?' },
     { key: 'sexWithHIVPartner', dataKey: 'sexWithHIVPartner', labelEn: 'Sex with HIV Partner', labelKh: '១. ដៃគូរួមភេទមានផ្ទុកមេរោគអេដស៍' },
     { key: 'sexWithoutCondom', dataKey: 'sexWithoutCondom', labelEn: 'Sex without Condom', labelKh: '២. រួមភេទដោយមិនបានប្រើស្រោមអនាម័យ' },
@@ -160,7 +163,6 @@ export const fetchOptionSets = async (engine) => {
         })
         
         const optionSets = response.optionSets.optionSets || []
-        console.log('Fetched option sets:', optionSets.length)
         
         // Create a map for easy lookup
         const optionSetMap = {}
@@ -174,7 +176,6 @@ export const fetchOptionSets = async (engine) => {
         
         return optionSetMap
     } catch (error) {
-        console.error('Error fetching option sets:', error)
         return {}
     }
 }
@@ -195,11 +196,9 @@ export const fetchDataElementsWithOptions = async (engine) => {
         })
         
         const dataElements = response.dataElements.dataElements || []
-        console.log('Fetched data elements:', dataElements.length)
         
         return dataElements
     } catch (error) {
-        console.error('Error fetching data elements:', error)
         return []
     }
 }
@@ -226,7 +225,6 @@ export const getOptionsForDataElement = async (engine, dataElementId) => {
         
         return []
     } catch (error) {
-        console.error('Error fetching options for data element:', error)
         return []
     }
 }
@@ -259,13 +257,11 @@ export const fetchProgramStageDataElementsWithOptions = async (engine, programSt
             }
         }
         
-        console.log('Fetched program stage data elements with options:', dataElements.length)
         return {
             dataElements,
             dataElementOptions
         }
     } catch (error) {
-        console.error('Error fetching program stage data elements:', error)
         return { dataElements: [], dataElementOptions: {} }
     }
 }
@@ -278,7 +274,6 @@ export const getFormFieldOptions = async (engine, fieldName, dataElementMapping)
         // Find the data element ID for this field
         const dataElementId = dataElementMapping[fieldName]
         if (!dataElementId) {
-            console.warn(`No data element mapping found for field: ${fieldName}`)
             return []
         }
         
@@ -286,7 +281,6 @@ export const getFormFieldOptions = async (engine, fieldName, dataElementMapping)
         const options = await getOptionsForDataElement(engine, dataElementId)
         return options
     } catch (error) {
-        console.error(`Error getting options for field ${fieldName}:`, error)
         return []
     }
 }
@@ -300,15 +294,18 @@ const findExistingTei = async (engine, orgUnitId, config, data) => {
         const uuicAttr = config.mapping.trackedEntityAttributes.UUIC
         const programId = config.program.id
         
-        console.log('📁 [IMPORT] Looking for existing TEI with:', {
-            systemId: data.systemId,
-            uuic: data.uuic,
-            systemIdAttr,
-            uuicAttr,
-            orgUnitId,
-            programId
-        })
         
+        // Build base params - orgUnit is required by DHIS2
+        if (!orgUnitId) {
+            return null
+        }
+        const baseParams = {
+            program: programId,
+            ou: orgUnitId,
+            fields: 'trackedEntityInstance',
+            paging: false
+        }
+
         // Try System ID first
         if (data.systemId && systemIdAttr) {
             try {
@@ -316,22 +313,17 @@ const findExistingTei = async (engine, orgUnitId, config, data) => {
                     teis: {
                         resource: 'trackedEntityInstances',
                         params: {
-                            ou: orgUnitId,
-                            program: programId,
-                            filter: `${systemIdAttr}:EQ:${data.systemId}`,
-                            fields: 'trackedEntityInstance',
-                            paging: false
+                            ...baseParams,
+                            filter: `${systemIdAttr}:EQ:${data.systemId}`
                         }
                     }
                 })
                 const rows = resp?.teis?.trackedEntityInstances || []
                 if (rows.length > 0) {
                     const teiId = rows[0].trackedEntityInstance
-                    console.log('📁 [IMPORT] Found existing TEI by System ID:', teiId)
                     return teiId
                 }
             } catch (e) {
-                console.warn('📁 [IMPORT] System ID lookup failed:', e)
             }
         }
         
@@ -342,9 +334,52 @@ const findExistingTei = async (engine, orgUnitId, config, data) => {
                     teis: {
                         resource: 'trackedEntityInstances',
                         params: {
-                            ou: orgUnitId,
+                            ...baseParams,
+                            filter: `${uuicAttr}:EQ:${data.uuic}`
+                        }
+                    }
+                })
+                const rows = resp?.teis?.trackedEntityInstances || []
+                if (rows.length > 0) {
+                    const teiId = rows[0].trackedEntityInstance
+                    return teiId
+                }
+            } catch (e) {
+            }
+        }
+        
+        return null
+    } catch (e) {
+        return null
+    }
+}
+
+/**
+ * Find existing TEI across all orgUnits the user has access to
+ * Used as fallback when 409 conflict occurs but lookup with specific orgUnit fails
+ * Note: DHIS2 requires at least one orgUnit, so we use orgUnitId but search within user hierarchy
+ */
+const findExistingTeiAcrossOrgUnits = async (engine, orgUnitId, config, data) => {
+    try {
+        const systemIdAttr = config.mapping.trackedEntityAttributes.System_ID
+        const uuicAttr = config.mapping.trackedEntityAttributes.UUIC
+        const programId = config.program.id
+        
+        if (!orgUnitId) {
+            return null
+        }
+        
+        // Try System ID first - use orgUnitId but search within user hierarchy
+        if (data.systemId && systemIdAttr) {
+            try {
+                const resp = await engine.query({
+                    teis: {
+                        resource: 'trackedEntityInstances',
+                        params: {
+                            filter: `${systemIdAttr}:EQ:${data.systemId}`,
+                            ou: orgUnitId, // Required by DHIS2, but withinUserHierarchy expands search
                             program: programId,
-                            filter: `${uuicAttr}:EQ:${data.uuic}`,
+                            withinUserHierarchy: true, // Search across all accessible orgUnits
                             fields: 'trackedEntityInstance',
                             paging: false
                         }
@@ -353,18 +388,132 @@ const findExistingTei = async (engine, orgUnitId, config, data) => {
                 const rows = resp?.teis?.trackedEntityInstances || []
                 if (rows.length > 0) {
                     const teiId = rows[0].trackedEntityInstance
-                    console.log('📁 [IMPORT] Found existing TEI by UUIC:', teiId)
                     return teiId
                 }
             } catch (e) {
-                console.warn('📁 [IMPORT] UUIC lookup failed:', e)
             }
         }
         
-        console.log('📁 [IMPORT] No existing TEI found')
+        // Try UUIC if System ID not found
+        if (data.uuic && uuicAttr) {
+            try {
+                const resp = await engine.query({
+                    teis: {
+                        resource: 'trackedEntityInstances',
+                        params: {
+                            filter: `${uuicAttr}:EQ:${data.uuic}`,
+                            ou: orgUnitId, // Required by DHIS2, but withinUserHierarchy expands search
+                            program: programId,
+                            withinUserHierarchy: true, // Search across all accessible orgUnits
+                            fields: 'trackedEntityInstance',
+                            paging: false
+                        }
+                    }
+                })
+                const rows = resp?.teis?.trackedEntityInstances || []
+                if (rows.length > 0) {
+                    const teiId = rows[0].trackedEntityInstance
+                    return teiId
+                }
+            } catch (e) {
+            }
+        }
+        
         return null
     } catch (e) {
-        console.warn('📁 [IMPORT] Failed to lookup existing TEI:', e)
+        return null
+    }
+}
+
+/**
+ * Find existing TEI without program filter (last resort)
+ * Used when all other lookup strategies fail but 409 conflict indicates TEI exists
+ */
+const findExistingTeiWithoutProgram = async (engine, orgUnitId, config, data) => {
+    try {
+        const systemIdAttr = config.mapping.trackedEntityAttributes.System_ID
+        const uuicAttr = config.mapping.trackedEntityAttributes.UUIC
+        
+        if (!orgUnitId) {
+            return null
+        }
+        
+        
+        // Try System ID first - search without program filter
+        if (data.systemId && systemIdAttr) {
+            try {
+                const resp = await engine.query({
+                    teis: {
+                        resource: 'trackedEntityInstances',
+                        params: {
+                            filter: `${systemIdAttr}:EQ:${data.systemId}`,
+                            ou: orgUnitId,
+                            fields: 'trackedEntityInstance',
+                            paging: false
+                        }
+                    }
+                })
+                const rows = resp?.teis?.trackedEntityInstances || []
+                if (rows.length > 0) {
+                    const teiId = rows[0].trackedEntityInstance
+                    return teiId
+                }
+            } catch (e) {
+            }
+        }
+        
+        // Try UUIC if System ID not found
+        if (data.uuic && uuicAttr) {
+            try {
+                const resp = await engine.query({
+                    teis: {
+                        resource: 'trackedEntityInstances',
+                        params: {
+                            filter: `${uuicAttr}:EQ:${data.uuic}`,
+                            ou: orgUnitId,
+                            fields: 'trackedEntityInstance',
+                            paging: false
+                        }
+                    }
+                })
+                const rows = resp?.teis?.trackedEntityInstances || []
+                if (rows.length > 0) {
+                    const teiId = rows[0].trackedEntityInstance
+                    return teiId
+                }
+            } catch (e) {
+            }
+        }
+        
+        return null
+    } catch (e) {
+        return null
+    }
+}
+
+/**
+ * Find existing enrollment for a TEI in a program
+ */
+const findExistingEnrollment = async (engine, teiId, programId) => {
+    try {
+        const resp = await engine.query({
+            enrollments: {
+                resource: 'enrollments',
+                params: {
+                    trackedEntityInstance: teiId,
+                    program: programId,
+                    fields: 'enrollment',
+                    paging: false
+                }
+            }
+        })
+        const enrollments = resp?.enrollments?.enrollments || []
+        if (enrollments.length > 0) {
+            const enrollmentId = enrollments[0].enrollment
+            return enrollmentId
+        }
+        return null
+    } catch (e) {
         return null
     }
 }
@@ -387,7 +536,6 @@ const fetchProgramTeAttributeIds = async (engine, programId) => {
         const ids = new Set(list.map(p => p?.trackedEntityAttribute?.id).filter(Boolean))
         return ids
     } catch (e) {
-        console.warn('📁 [IMPORT] Failed to fetch program TE attributes:', e)
         return new Set()
     }
 }
@@ -464,6 +612,9 @@ export const processCSVForImport = async (csvText, engine, config) => {
             ],
             partnerTGW: [
                 "Partner TGW", "4.3Your partner's sexual identify is TGW"
+            ],
+            partnerTGM: [
+                "Partner TGM", "4.4Your partner's sexual identify is TGM"
             ],
             numberOfSexualPartners: [
                 'Number of Sexual Partners', '5.How many sexual partner do you have?'
@@ -579,7 +730,6 @@ export const processCSVForImport = async (csvText, engine, config) => {
             processedRows: data.length
         }
     } catch (error) {
-        console.error('Error processing CSV:', error)
         return {
             success: false,
             error: error.message,
@@ -613,7 +763,6 @@ export const validateAndTransformRowData = async (rowData, rowNumber, config) =>
     requiredFields.forEach(field => {
         const fieldKey = headerToFieldMapping[field]
         if (!fieldKey) {
-            console.warn(`No field mapping found for required field: ${field}`)
             return
         }
         if (!rowData[fieldKey] || rowData[fieldKey].trim() === '') {
@@ -665,14 +814,15 @@ export const validateAndTransformRowData = async (rowData, rowNumber, config) =>
         if (transformedData[field]) {
             const value = transformedData[field].toLowerCase()
             
-            // Special handling for everOnPrep which uses 10/11/12 codes
+            // Special handling for everOnPrep (boolean field: true/false, skip "Never Know")
             if (field === 'everOnPrep') {
                 if (value === 'yes' || value === 'true' || value === '10' || value === '1') {
-                    transformedData[field] = '10'
+                    transformedData[field] = 'true'
                 } else if (value === 'no' || value === 'false' || value === '11' || value === '0') {
-                    transformedData[field] = '11'
+                    transformedData[field] = 'false'
                 } else if (value === 'never know' || value === 'neverknow' || value === '12' || value === 'unknown') {
-                    transformedData[field] = '12'
+                    transformedData[field] = ''
+                    warnings.push(`Row ${rowNumber}: everOnPrep set to "Never Know" - field will be left blank`)
                 } else {
                     warnings.push(`Row ${rowNumber}: Ambiguous everOnPrep value: ${transformedData[field]}`)
                 }
@@ -839,7 +989,8 @@ export const calculateRiskScoreFromData = (data) => {
         riskLevel, 
         riskFactors, 
         recommendations,
-        riskScreeningScore: score
+        riskScreeningScore: score,
+        riskScreeningResult: riskLevel  // Add riskScreeningResult mapped to riskLevel
     }
 }
 
@@ -870,11 +1021,8 @@ export const createDHIS2Payload = (data, orgUnitId, config) => {
         // Validate attribute ID format (should be 11 characters)
         if (attrId && attrId.match(/^[a-zA-Z0-9]{11}$/) && data[key]) {
             attributes.push({ attribute: attrId, value: String(data[key]) })
-            console.log(`📁 [IMPORT] Added TEI attribute: ${key} = ${data[key]} (${attrId})`)
         } else if (attrId && !attrId.match(/^[a-zA-Z0-9]{11}$/)) {
-            console.log(`📁 [IMPORT] Skipping invalid TEI attribute: ${key} - invalid ID: ${attrId}`)
         } else if (attrId && !data[key]) {
-            console.log(`📁 [IMPORT] Skipping empty TEI attribute: ${key} - no data`)
         }
     })
 
@@ -904,7 +1052,9 @@ export const createProgramStageDataValues = (data, config) => {
         partnerMale: config.mapping.programStageDataElements.partnerMale,
         partnerFemale: config.mapping.programStageDataElements.partnerFemale,
         partnerTGW: config.mapping.programStageDataElements.partnerTGW,
+        partnerTGM: config.mapping.programStageDataElements.partnerTGM,
         numberOfSexualPartners: config.mapping.programStageDataElements.numberOfSexualPartners,
+        averageNumberOfSexualPartners: config.mapping.programStageDataElements.averageNumberOfSexualPartners,
         past6MonthsPractices: config.mapping.programStageDataElements.past6MonthsPractices,
         sexWithoutCondom: config.mapping.programStageDataElements.sexWithoutCondom,
         sexWithHIVPartner: config.mapping.programStageDataElements.sexWithHIVPartner,
@@ -932,6 +1082,7 @@ export const createProgramStageDataValues = (data, config) => {
         config.mapping.programStageDataElements.partnerMale,
         config.mapping.programStageDataElements.partnerFemale,
         config.mapping.programStageDataElements.partnerTGW,
+        config.mapping.programStageDataElements.partnerTGM,
         config.mapping.programStageDataElements.noneOfAbove
     ])
 
@@ -946,19 +1097,27 @@ export const createProgramStageDataValues = (data, config) => {
         config.mapping.programStageDataElements.currentlyOnPrep,
         config.mapping.programStageDataElements.stiSymptoms,
         config.mapping.programStageDataElements.sexualHealthConcerns,
-        config.mapping.programStageDataElements.sexWithoutCondom
+        config.mapping.programStageDataElements.sexWithoutCondom,
+        config.mapping.programStageDataElements.everOnPrep,
+        config.mapping.programStageDataElements.abortion,
+        config.mapping.programStageDataElements.numberOfSexualPartners // Added: BOOLEAN type
     ].filter(Boolean))
 
+    // Log incoming data for debugging
+    console.log('[createProgramStageDataValues] Input data keys:', Object.keys(data))
+    console.log('[createProgramStageDataValues] Input data sample:', Object.entries(data).slice(0, 5).reduce((acc, [k, v]) => {
+        acc[k] = String(v).substring(0, 50)
+        return acc
+    }, {}))
+    
     Object.entries(eventMappings).forEach(([key, dataElementId]) => {
         // Skip invalid placeholder IDs
         if (dataElementId && dataElementId.includes('ID') && !dataElementId.match(/^[a-zA-Z0-9]{11}$/)) {
-            console.log(`📁 [IMPORT] Skipping field ${key} - invalid placeholder ID: ${dataElementId}`)
             return
         }
         
         // Skip if data element already used (prevent duplicates)
         if (usedDataElements.has(dataElementId)) {
-            console.log(`📁 [IMPORT] Skipping field ${key} - data element ${dataElementId} already used`)
             return
         }
         
@@ -969,28 +1128,51 @@ export const createProgramStageDataValues = (data, config) => {
             if (booleanElementIds.has(dataElementId)) {
                 if (typeof value === 'string') {
                     const v = value.trim().toLowerCase()
-                    if (['never know', 'neverknow', '12', 'unknown', ''].includes(v)) {
-                        value = ''
-                    } else if (['1', 'yes', 'true'].includes(v)) {
-                        value = 'true'
-                    } else if (['0', 'no', 'false'].includes(v)) {
-                        value = 'false'
+                    // For everOnPrep boolean: skip "Never Know" values (empty = not sent)
+                    if (key === 'everOnPrep') {
+                        if (['never know', 'neverknow', '12', 'unknown', ''].includes(v)) {
+                            value = ''
+                        } else if (['1', 'yes', 'true', '10'].includes(v)) {
+                            value = 'true'
+                        } else if (['0', 'no', 'false', '11'].includes(v)) {
+                            value = 'false'
+                        }
+                    } else {
+                        if (['never know', 'neverknow', '12', 'unknown', ''].includes(v)) {
+                            value = ''
+                        } else if (['1', 'yes', 'true'].includes(v)) {
+                            value = 'true'
+                        } else if (['0', 'no', 'false'].includes(v)) {
+                            value = 'false'
+                        }
                     }
-                } else if (value === 1) {
+                } else if (value === 1 || value === 10) {
                     value = 'true'
-                } else if (value === 0) {
+                } else if (value === 0 || value === 11) {
                     value = 'false'
+                } else if (value === 12) {
+                    // For everOnPrep, 12 = Never Know = skip
+                    if (key === 'everOnPrep') {
+                        value = ''
+                    }
                 }
             }
 
+            // Skip empty values, but log in development to help debug
             if (value === '' || value === null || typeof value === 'undefined') {
-                console.log(`📁 [IMPORT] Skipping field ${key} - empty value after normalization`)
+                if (process.env.NODE_ENV === 'development') {
+                    console.log(`[createProgramStageDataValues] ⏭️ Skipping ${key} - empty value:`, { 
+                        original: data[key], 
+                        processed: value,
+                        dataElement: dataElementId 
+                    })
+                }
                 return
             }
 
-            // Special handling for PrEP fields that use specific numeric codes
-            if (key === 'everOnPrep') {
-                // everOnPrep uses: 10=Yes, 11=No, 12=Never Know
+            // Special handling for PrEP fields that use specific numeric codes (only if NOT boolean)
+            if (key === 'everOnPrep' && !booleanElementIds.has(dataElementId)) {
+                // everOnPrep uses: 10=Yes, 11=No, 12=Never Know (only for option set types)
                 if (typeof value === 'string') {
                     const v = value.toLowerCase()
                     if (v === 'yes' || v === 'true' || v === '10' || v === '1') {
@@ -1017,22 +1199,41 @@ export const createProgramStageDataValues = (data, config) => {
                 } else if (value === 0) {
                     value = 'false'
                 }
+            } else if (key === 'riskScreeningResult') {
+                // Special handling for riskScreeningResult
+                // The value might be text like "Low", "High", "Medium" etc.
+                // We need to preserve it as-is since we can't fetch option sets here
+                // The value should match option set codes/names exactly
+                // If it doesn't match, DHIS2 will reject it, but that's expected behavior
+                value = String(value).trim()
+                
+                // Log the value being used
+                console.log('[createProgramStageDataValues] riskScreeningResult value:', {
+                    original: data[key],
+                    processed: value,
+                    dataElementId,
+                    note: 'Value should match option set code/name exactly. If rejected by DHIS2, check option set configuration.'
+                })
             } else if (!booleanElementIds.has(dataElementId)) {
-                // Normalize other boolean values - convert true/false to 1/0 for numeric option sets
+                // Normalize other boolean values - convert true/false/yes/no to 1/0 for numeric option sets
                 if (typeof value === 'string') {
-                    const v = value.toLowerCase()
+                    const v = value.trim().toLowerCase()
                     if (v === 'yes' || v === 'true' || v === '1') {
                         value = '1'
                     } else if (v === 'no' || v === 'false' || v === '0') {
                         value = '0'
                     }
+                    // Keep other string values as-is (for text fields, option sets, etc.)
+                } else if (value === true || value === 1) {
+                    value = '1'
+                } else if (value === false || value === 0) {
+                    value = '0'
                 }
             }
             
             // For trueOnly data elements, only send when value is '1' or 'true'
             if (trueOnlyElementIds.has(dataElementId)) {
                 if (value !== '1' && value !== 'true') {
-                    console.log(`📁 [IMPORT] Skipping field ${key} - false/0 not allowed for trueOnly (${dataElementId})`)
                     return
                 }
                 // Normalize trueOnly to 'true' for DHIS2
@@ -1041,15 +1242,62 @@ export const createProgramStageDataValues = (data, config) => {
                 }
             }
 
+            // Debug logging for riskScreeningResult
+            if (key === 'riskScreeningResult') {
+                console.log('[createProgramStageDataValues] riskScreeningResult:', {
+                    key,
+                    dataElementId,
+                    value,
+                    originalValue: data[key],
+                    willAdd: value !== '' && value !== null && typeof value !== 'undefined'
+                })
+            }
+
             dataValues.push({ dataElement: dataElementId, value: String(value) })
             usedDataElements.add(dataElementId) // Mark as used
-            console.log(`📁 [IMPORT] Added data value: ${key} = ${value} (${dataElementId})`)
+            
+            // Log each field being added
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`[createProgramStageDataValues] ✅ Added ${key}:`, { dataElement: dataElementId, value: String(value) })
+            }
+            
+            // Additional logging for riskScreeningResult
+            if (key === 'riskScreeningResult') {
+                console.log('[createProgramStageDataValues] ✅ riskScreeningResult ADDED to dataValues:', {
+                    dataElement: dataElementId,
+                    value: String(value),
+                    valueType: typeof value,
+                    valueLength: String(value).length
+                })
+            }
         } else if (dataElementId && !dataElementId.match(/^[a-zA-Z0-9]{11}$/)) {
-            console.log(`📁 [IMPORT] Skipping field ${key} - invalid data element ID: ${dataElementId}`)
+            // Invalid data element ID - skip silently
+            if (key === 'riskScreeningResult') {
+                console.error('[createProgramStageDataValues] ❌ Invalid riskScreeningResult dataElementId:', dataElementId)
+            }
         } else if (dataElementId && !data[key]) {
-            console.log(`📁 [IMPORT] Skipping field ${key} - no data value`)
+            // No data value - skip silently
+            if (key === 'riskScreeningResult') {
+                console.warn('[createProgramStageDataValues] ⚠️ riskScreeningResult missing in data:', {
+                    key,
+                    dataElementId,
+                    dataKeys: Object.keys(data),
+                    hasRiskResult: 'riskScreeningResult' in data,
+                    riskResultValue: data.riskScreeningResult
+                })
+            }
+            // Log skipped fields in development
+            if (process.env.NODE_ENV === 'development' && dataElementId.match(/^[a-zA-Z0-9]{11}$/)) {
+                console.log(`[createProgramStageDataValues] ⏭️ Skipped ${key} (no value):`, { dataElement: dataElementId, hasValue: !!data[key] })
+            }
         }
     })
+    
+    console.log('[createProgramStageDataValues] Total data values created:', dataValues.length)
+    console.log('[createProgramStageDataValues] Data values summary:', dataValues.map(dv => ({
+        dataElement: dv.dataElement.substring(0, 11) + '...',
+        value: String(dv.value).substring(0, 30)
+    })))
 
     return dataValues
 }
@@ -1060,7 +1308,9 @@ export const createProgramStageDataValues = (data, config) => {
 export const importRecordToDHIS2 = async (data, orgUnitId, engine, config) => {
     try {
         // 0. Upsert TEI: reuse existing when System ID or UUIC already present
+        // Lookup existing TEI - orgUnit is required by DHIS2
         let teiId = await findExistingTei(engine, orgUnitId, config, data)
+        
         if (!teiId) {
             // 1. Create TEI (like manual input)
             const { teiPayload, attributes } = createDHIS2Payload(data, orgUnitId, config)
@@ -1069,98 +1319,378 @@ export const importRecordToDHIS2 = async (data, orgUnitId, engine, config) => {
             if (allowedAttrIds && allowedAttrIds.size > 0) {
                 const filtered = (attributes || []).filter(a => allowedAttrIds.has(a.attribute))
                 teiPayload.trackedEntityInstances[0].attributes = filtered
-                console.log(`📁 [IMPORT] Filtered TEI attributes to program-allowed: ${filtered.length}`)
             }
-            console.log('📁 [IMPORT] Creating TEI:', JSON.stringify(teiPayload, null, 2))
-            const teiRes = await engine.mutate({
-                resource: 'trackedEntityInstances',
-                type: 'create',
-                data: teiPayload
-            })
-            console.log('📁 [IMPORT] TEI Response:', teiRes)
-            if (teiRes?.response?.status === 'ERROR' || teiRes?.response?.status === 'WARNING') {
-                const importSummary = teiRes?.response?.importSummaries?.[0]
-                const errorDetails = importSummary?.description || 'Unknown error'
-                console.error('📁 [IMPORT] TEI full response:', JSON.stringify(teiRes?.response, null, 2))
-                console.error('📁 [IMPORT] TEI creation failed details:', {
-                    status: teiRes?.response?.status,
-                    importSummary,
-                    errorDetails
+            
+            try {
+                const teiRes = await engine.mutate({
+                    resource: 'trackedEntityInstances',
+                    type: 'create',
+                    data: teiPayload
                 })
-                if (importSummary?.conflicts && importSummary.conflicts.length > 0) {
-                    const conflictDetails = importSummary.conflicts.map(c => `${c.object || ''}: ${c.value}`).join(', ')
-                    // If conflict due to unique attribute, try lookup and reuse TEI
-                    const isUniqueConflict = /already exists|value_exists|duplicate|unique/i.test(conflictDetails)
-                    if (isUniqueConflict) {
-                        teiId = await findExistingTei(engine, orgUnitId, config, data)
-                        if (!teiId) throw new Error(`Duplicate TEI but not found via lookup: ${conflictDetails}`)
-                        console.warn('📁 [IMPORT] Reusing existing TEI after conflict:', teiId)
+                
+                // Always check for reference first, even in error responses
+                const importSummary = teiRes?.response?.importSummaries?.[0]
+                if (importSummary?.reference) {
+                    teiId = importSummary.reference
+                } else if (teiRes?.response?.status === 'ERROR' || teiRes?.response?.status === 'WARNING') {
+                    const errorDetails = importSummary?.description || 'Unknown error'
+                    
+                    // Check for conflicts
+                    if (importSummary?.conflicts && importSummary.conflicts.length > 0) {
+                        const conflictDetails = importSummary.conflicts.map(c => `${c.object || ''}: ${c.value}`).join(', ')
+                        // If conflict due to unique attribute, try lookup and reuse TEI
+                        const isUniqueConflict = /already exists|value_exists|duplicate|unique|conflict/i.test(conflictDetails)
+                        if (isUniqueConflict) {
+                            // Try simpler lookup without program filter first (less likely to cause CORS issues)
+                            teiId = await findExistingTeiWithoutProgram(engine, orgUnitId, config, data)
+                            if (!teiId) {
+                                // Retry lookup with orgUnit and program
+                                await new Promise(resolve => setTimeout(resolve, 500)) // Wait for consistency
+                                teiId = await findExistingTei(engine, orgUnitId, config, data)
+                            }
+                            if (!teiId) {
+                                // Try broader search across user hierarchy
+                                await new Promise(resolve => setTimeout(resolve, 500)) // Wait for consistency
+                                teiId = await findExistingTeiAcrossOrgUnits(engine, orgUnitId, config, data)
+                            }
+                            if (!teiId) {
+                                throw new Error(`Duplicate TEI but not found via lookup: ${conflictDetails}`)
+                            }
+                        } else {
+                            throw new Error(`Duplicate data found: ${conflictDetails}`)
+                        }
                     } else {
-                        throw new Error(`Duplicate data found: ${conflictDetails}`)
+                        throw new Error(`TEI creation failed: ${errorDetails}`)
                     }
                 } else {
-                    throw new Error(`TEI creation failed: ${errorDetails}`)
+                    teiId = teiRes?.response?.importSummaries?.[0]?.reference
+                    if (!teiId) throw new Error('TEI creation failed - no reference ID')
                 }
-            } else {
-                teiId = teiRes?.response?.importSummaries?.[0]?.reference
-                if (!teiId) throw new Error('TEI creation failed - no reference ID')
+            } catch (error) {
+                // Handle 409 conflict error from API - check multiple error structures
+                const errorResponse = error.details?.response || error.response || error
+                const httpStatusCode = error.details?.httpStatusCode || errorResponse?.details?.httpStatusCode || errorResponse?.httpStatusCode
+                const isConflict = httpStatusCode === 409 || 
+                                 httpStatusCode === '409' ||
+                                 error.message?.includes('409') || 
+                                 error.message?.includes('Conflict') ||
+                                 error.details?.status === 'Conflict'
+                
+                
+                if (isConflict) {
+                    // Try to extract TEI ID from error response - check multiple locations
+                    let extractedTeiId = null
+                    try {
+                        // Check error.response first
+                        if (error.response) {
+                            const errorResp = error.response
+                            if (errorResp?.response?.importSummaries?.[0]?.reference) {
+                                extractedTeiId = errorResp.response.importSummaries[0].reference
+                            } else if (errorResp?.importSummaries?.[0]?.reference) {
+                                extractedTeiId = errorResp.importSummaries[0].reference
+                            }
+                        }
+                        
+                        // Check error.details - it might be a string that needs parsing
+                        if (!extractedTeiId && error.details) {
+                            try {
+                                let detailsObj = error.details
+                                
+                                // If details is a string, parse it first
+                                if (typeof error.details === 'string') {
+                                    try {
+                                        detailsObj = JSON.parse(error.details)
+                                    } catch (e) {
+                                        // Failed to parse
+                                    }
+                                }
+                                
+                                // Now check for response in parsed details
+                                if (detailsObj?.response) {
+                                    const detailsResp = detailsObj.response
+                                    if (detailsResp?.response?.importSummaries?.[0]?.reference) {
+                                        extractedTeiId = detailsResp.response.importSummaries[0].reference
+                                    } else if (detailsResp?.importSummaries?.[0]?.reference) {
+                                        extractedTeiId = detailsResp.importSummaries[0].reference
+                                    }
+                                }
+                                
+                                // Also check directly in detailsObj
+                                if (!extractedTeiId && detailsObj?.importSummaries?.[0]?.reference) {
+                                    extractedTeiId = detailsObj.importSummaries[0].reference
+                                }
+                            } catch (e) {
+                                // Error parsing
+                            }
+                        }
+                        
+                        // Try parsing errorResponse as JSON if it's a string
+                        if (!extractedTeiId && errorResponse) {
+                            try {
+                                const parsedResponse = typeof errorResponse === 'string' ? JSON.parse(errorResponse) : errorResponse
+                                if (parsedResponse?.response?.importSummaries?.[0]?.reference) {
+                                    extractedTeiId = parsedResponse.response.importSummaries[0].reference
+                                } else if (parsedResponse?.importSummaries?.[0]?.reference) {
+                                    extractedTeiId = parsedResponse.importSummaries[0].reference
+                                }
+                            } catch (parseError) {
+                                // Not JSON, skip
+                            }
+                        }
+                    } catch (e) {
+                        // Failed to extract
+                    }
+                    
+                    // If we extracted the ID, use it
+                    if (extractedTeiId) {
+                        teiId = extractedTeiId
+                    } else {
+                        // Try lookup with multiple strategies
+                        try {
+                            // Strategy 1: Try without program filter first (simplest, least likely to fail)
+                            await new Promise(resolve => setTimeout(resolve, 500)) // Wait for consistency
+                            teiId = await findExistingTeiWithoutProgram(engine, orgUnitId, config, data)
+                            
+                            if (!teiId) {
+                                // Strategy 2: Try with program filter
+                                await new Promise(resolve => setTimeout(resolve, 500))
+                                teiId = await findExistingTei(engine, orgUnitId, config, data)
+                            }
+                            
+                            if (!teiId) {
+                                // Strategy 3: Try broader search across orgUnits (might trigger CORS, but worth trying)
+                                await new Promise(resolve => setTimeout(resolve, 500))
+                                try {
+                                    teiId = await findExistingTeiAcrossOrgUnits(engine, orgUnitId, config, data)
+                                } catch (corsError) {
+                                    // Broader search failed (possible CORS)
+                                }
+                            }
+                            
+                            if (!teiId) {
+                                // All lookup strategies failed - the TEI exists (409 confirms this) but we can't find it
+                                // This usually means it's in a different orgUnit or the lookup queries are failing
+                                throw new Error(`TEI creation conflict: Resource exists but cannot be located. The TEI with System ID "${data.systemId}" or UUIC "${data.uuic}" may exist in a different organization unit. Please check your data or try importing from the correct organization unit.`)
+                            }
+                        } catch (lookupError) {
+                            // If lookup fails (possibly due to CORS), throw a helpful error
+                            if (lookupError.message?.includes('cannot be located')) {
+                                throw lookupError
+                            }
+                            // Otherwise, throw the conflict error with lookup failure info
+                            throw new Error(`TEI creation conflict: Resource exists but cannot be located. System ID: ${data.systemId}, UUIC: ${data.uuic}. Lookup failed: ${lookupError.message}`)
+                        }
+                    }
+                    
+                    if (!teiId) {
+                        throw new Error(`TEI creation conflict: Resource exists but cannot be located. System ID: ${data.systemId}, UUIC: ${data.uuic}`)
+                    }
+                } else {
+                    throw error
+                }
             }
+        } else {
         }
 
-        // 2. Create enrollment (like manual input)
-        const enrollmentPayload = {
-            enrollments: [{
-                trackedEntityInstance: teiId,
-                program: config.program.id,
-        orgUnit: orgUnitId,
-        enrollmentDate: new Date().toISOString().split('T')[0],
-        incidentDate: data.dateOfBirth || new Date().toISOString().split('T')[0]
-            }]
-        }
-
-        const enrRes = await engine.mutate({
-            resource: 'enrollments',
-            type: 'create',
-            data: enrollmentPayload
-        })
-
-        if (enrRes?.response?.status === 'ERROR' || enrRes?.response?.status === 'WARNING') {
-            const importSummary = enrRes?.response?.importSummaries?.[0]
-            const errorDetails = importSummary?.description || 'Unknown error'
-            console.error('📁 [IMPORT] Enrollment failed:', errorDetails)
-            console.error('📁 [IMPORT] Enrollment import summary:', importSummary)
-            throw new Error(`Enrollment failed: ${errorDetails}`)
-        }
-
-        const enrollmentId = enrRes?.response?.importSummaries?.[0]?.reference
-        console.log('📁 [IMPORT] Enrollment ID:', enrollmentId)
+        // 2. Check for existing enrollment or create new one
+        let enrollmentId = await findExistingEnrollment(engine, teiId, config.program.id)
+        
         if (!enrollmentId) {
-            console.error('📁 [IMPORT] Enrollment response:', enrRes)
-            throw new Error('Enrollment failed - no reference ID')
+            // No existing enrollment, create a new one
+            const enrollmentPayload = {
+                enrollments: [{
+                    trackedEntityInstance: teiId,
+                    program: config.program.id,
+                    orgUnit: orgUnitId,
+                    enrollmentDate: new Date().toISOString().split('T')[0],
+                    incidentDate: data.dateOfBirth || new Date().toISOString().split('T')[0]
+                }]
+            }
+
+            console.log('[importRecordToDHIS2] Creating new enrollment for TEI:', teiId)
+            let enrRes
+            try {
+                enrRes = await engine.mutate({
+                    resource: 'enrollments',
+                    type: 'create',
+                    data: enrollmentPayload
+                })
+
+                if (enrRes?.response?.status === 'ERROR' || enrRes?.response?.status === 'WARNING') {
+                    const importSummary = enrRes?.response?.importSummaries?.[0]
+                    const errorDetails = importSummary?.description || 'Unknown error'
+                    
+                    // Check if error is due to duplicate enrollment
+                    if (importSummary?.conflicts && importSummary.conflicts.length > 0) {
+                        const conflictDetails = importSummary.conflicts.map(c => `${c.object || ''}: ${c.value}`).join(', ')
+                        const isDuplicateConflict = /already exists|value_exists|duplicate|already enrolled/i.test(conflictDetails)
+                        
+                        if (isDuplicateConflict) {
+                            // Try to find existing enrollment again
+                            enrollmentId = await findExistingEnrollment(engine, teiId, config.program.id)
+                            if (!enrollmentId) {
+                                throw new Error(`Duplicate enrollment but not found via lookup: ${conflictDetails}`)
+                            }
+                        } else {
+                            throw new Error(`Enrollment failed: ${errorDetails}`)
+                        }
+                    } else {
+                        throw new Error(`Enrollment failed: ${errorDetails}`)
+                    }
+                } else {
+                    enrollmentId = enrRes?.response?.importSummaries?.[0]?.reference
+                    if (!enrollmentId) {
+                        throw new Error('Enrollment failed - no reference ID')
+                    }
+                    console.log('[importRecordToDHIS2] ✅ Created new enrollment:', enrollmentId)
+                }
+            } catch (error) {
+                // Handle 409 conflict error for enrollment
+                // NOTE: 409 is EXPECTED when enrollment already exists - this is normal behavior
+                const errorResponse = error.details?.response || error.response || error
+                const httpStatusCode = error.details?.httpStatusCode || errorResponse?.details?.httpStatusCode || errorResponse?.httpStatusCode
+                const isConflict = httpStatusCode === 409 || 
+                                 httpStatusCode === '409' ||
+                                 error.message?.includes('409') || 
+                                 error.message?.includes('Conflict') ||
+                                 error.details?.status === 'Conflict' ||
+                                 error.message?.toLowerCase().includes('already enrolled')
+                
+                if (isConflict) {
+                    // 409 Conflict is EXPECTED - enrollment already exists, we'll find and use it
+                    console.log('[importRecordToDHIS2] ⚠️ Enrollment 409 conflict (expected) - enrollment already exists, finding existing enrollment...')
+                    
+                    // Try to extract enrollment ID from error response
+                    let extractedEnrollmentId = null
+                    try {
+                        // Parse error response to find reference
+                        const parsedResponse = typeof errorResponse === 'string' ? JSON.parse(errorResponse) : errorResponse
+                        
+                        // Check multiple possible response structures
+                        if (parsedResponse?.response?.importSummaries?.[0]?.reference) {
+                            extractedEnrollmentId = parsedResponse.response.importSummaries[0].reference
+                            } else if (parsedResponse?.importSummaries?.[0]?.reference) {
+                                extractedEnrollmentId = parsedResponse.importSummaries[0].reference
+                        }
+                    } catch (e) {
+                    }
+                    
+                    // Retry finding existing enrollment - wait for consistency
+                    if (!extractedEnrollmentId) {
+                        await new Promise(resolve => setTimeout(resolve, 500)) // Wait 500ms for consistency
+                        enrollmentId = await findExistingEnrollment(engine, teiId, config.program.id)
+                        if (enrollmentId) {
+                            console.log('[importRecordToDHIS2] ✅ Found existing enrollment:', enrollmentId)
+                        } else {
+                            // If lookup still fails, try once more after a longer delay
+                            await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1s
+                            enrollmentId = await findExistingEnrollment(engine, teiId, config.program.id)
+                            if (enrollmentId) {
+                                console.log('[importRecordToDHIS2] ✅ Found existing enrollment (retry):', enrollmentId)
+                            }
+                        }
+                    } else {
+                        enrollmentId = extractedEnrollmentId
+                        console.log('[importRecordToDHIS2] ✅ Extracted enrollment ID from error response:', enrollmentId)
+                    }
+                    
+                    // If we still can't find it, but 409 indicates it exists, continue with event creation
+                    // DHIS2 will handle the duplicate enrollment reference
+                    if (!enrollmentId) {
+                        // For enrollment, we can try to get it from the TEI's enrollments directly
+                        try {
+                            const teiResp = await engine.query({
+                                tei: {
+                                    resource: 'trackedEntityInstances',
+                                    id: teiId,
+                                    params: {
+                                        fields: 'enrollments[enrollment,program]'
+                                    }
+                                }
+                            })
+                            const enrollments = teiResp?.tei?.enrollments || []
+                            const programEnrollment = enrollments.find(e => e.program === config.program.id)
+                            if (programEnrollment?.enrollment) {
+                                enrollmentId = programEnrollment.enrollment
+                                console.log('[importRecordToDHIS2] ✅ Found enrollment from TEI query:', enrollmentId)
+                            }
+                        } catch (e) {
+                            console.warn('[importRecordToDHIS2] Failed to query TEI for enrollments:', e)
+                        }
+                        
+                        if (!enrollmentId) {
+                            console.error('[importRecordToDHIS2] ❌ Could not find existing enrollment after 409 conflict')
+                            throw new Error(`Enrollment creation conflict: Enrollment exists for TEI ${teiId} but cannot be located.`)
+                        }
+                    }
+                    
+                    console.log('[importRecordToDHIS2] ✅ Using existing enrollment:', enrollmentId)
+                } else {
+                    // For non-conflict errors, check if response has error status
+                    if (errorResponse?.response?.status === 'ERROR' || errorResponse?.response?.status === 'WARNING') {
+                        const importSummary = errorResponse?.response?.importSummaries?.[0]
+                        const errorDetails = importSummary?.description || error.message || 'Unknown error'
+                        throw new Error(`Enrollment failed: ${errorDetails}`)
+                    }
+                    throw error
+                }
+            }
+        } else {
         }
 
         // 3. Create event with data values (like manual input)
         const dataValues = createProgramStageDataValues(data, config)
 
-        console.log(`📁 [IMPORT] Created ${dataValues.length} data values for event`)
-        console.log('📁 [IMPORT] Data values:', JSON.stringify(dataValues, null, 2))
+        // Debug logging for risk screening values
+        const riskScoreDv = dataValues.find(dv => dv.dataElement === config.mapping.programStageDataElements.riskScreeningScore)
+        const riskResultDv = dataValues.find(dv => dv.dataElement === config.mapping.programStageDataElements.riskScreeningResult)
+        console.log('[importRecordToDHIS2] Risk screening data values:', {
+            riskScore: riskScoreDv,
+            riskResult: riskResultDv,
+            allDataValues: dataValues.length,
+            riskScreeningResultInData: data.riskScreeningResult,
+            riskScreeningScoreInData: data.riskScreeningScore
+        })
 
         // Validate data values before sending
         const validDataValues = dataValues.filter(dv => {
             if (!dv.dataElement || !dv.value) {
-                console.warn(`📁 [IMPORT] Skipping invalid data value:`, dv)
                 return false
             }
             return true
         })
+        
+        console.log('[importRecordToDHIS2] Valid data values:', validDataValues.length, 'of', dataValues.length)
 
-        console.log(`📁 [IMPORT] Valid data values: ${validDataValues.length}/${dataValues.length}`)
 
         if (validDataValues.length > 0) {
-            // Create unique event date to prevent conflicts
-            const baseDate = new Date()
-            const uniqueOffset = Math.floor(Math.random() * 1000) // Add random offset
-            const eventDate = new Date(baseDate.getTime() + uniqueOffset)
+            // First, try to find existing event for this enrollment/programStage
+            let existingEventId = null
+            try {
+                const eventsResponse = await engine.query({
+                    events: {
+                        resource: 'events',
+                        params: {
+                            enrollment: enrollmentId,
+                            program: config.program.id,
+                            programStage: config.program.stageId,
+                            fields: 'event,eventDate,status',
+                            pageSize: 1,
+                            order: 'eventDate:desc'
+                        }
+                    }
+                })
+                const events = eventsResponse?.events?.events || []
+                if (events.length > 0) {
+                    existingEventId = events[0].event
+                    console.log('[importRecordToDHIS2] Found existing event:', existingEventId)
+                }
+            } catch (queryError) {
+                console.log('[importRecordToDHIS2] No existing event found or query failed (will create new):', queryError.message)
+            }
+            
+            // Use current date for event
+            const eventDate = new Date().toISOString().split('T')[0]
             
             const eventPayload = {
                 events: [{
@@ -1169,53 +1699,188 @@ export const importRecordToDHIS2 = async (data, orgUnitId, engine, config) => {
                     programStage: config.program.stageId,
                     orgUnit: orgUnitId,
                     enrollment: enrollmentId,
-                    eventDate: eventDate.toISOString().split('T')[0],
+                    eventDate: eventDate,
                     status: 'COMPLETED',
                     dataValues: validDataValues
                 }]
             }
+            
+            // If existing event found, add event ID to payload for update
+            if (existingEventId) {
+                eventPayload.events[0].event = existingEventId
+            }
+            
+            console.log('[importRecordToDHIS2] Event payload:', {
+                programStage: config.program.stageId,
+                program: config.program.id,
+                dataValuesCount: validDataValues.length,
+                riskScreeningResultInPayload: validDataValues.find(dv => 
+                    dv.dataElement === config.mapping.programStageDataElements.riskScreeningResult
+                ),
+                riskScreeningScoreInPayload: validDataValues.find(dv => 
+                    dv.dataElement === config.mapping.programStageDataElements.riskScreeningScore
+                )
+            })
 
-            console.log('📁 [IMPORT] Event payload:', JSON.stringify(eventPayload, null, 2))
 
+            console.log('[importRecordToDHIS2] 📤 POSTING TO EVENTS API - This is where form data goes!')
+            console.log('[importRecordToDHIS2] Event API endpoint: POST /api/events')
+            console.log('[importRecordToDHIS2] Event payload details:', {
+                trackedEntityInstance: teiId,
+                program: config.program.id,
+                programStage: config.program.stageId,
+                enrollment: enrollmentId,
+                dataValuesCount: validDataValues.length,
+                allDataValues: validDataValues.map(dv => ({
+                    dataElement: dv.dataElement,
+                    value: String(dv.value).substring(0, 50)
+                }))
+            })
+            
             let evtRes
             try {
-                console.log('📁 [IMPORT] Sending event creation request...')
+                // DHIS2 events API: Include event ID in payload to update, omit to create
+                // Always use 'create' type - DHIS2 will update if event ID is present
+                if (existingEventId) {
+                    console.log(`[importRecordToDHIS2] Updating existing event: ${existingEventId}...`)
+                } else {
+                    console.log(`[importRecordToDHIS2] Creating new event...`)
+                }
+                
                 evtRes = await engine.mutate({
                     resource: 'events',
-                    type: 'create',
+                    type: 'create', // Always use 'create' - DHIS2 updates if event ID is in payload
                     data: eventPayload
                 })
-                console.log('📁 [IMPORT] Event creation request completed')
+                console.log(`[importRecordToDHIS2] ✅ SUCCESS - Event ${existingEventId ? 'updated' : 'created'} via /api/events`)
             } catch (eventError) {
-                console.error('📁 [IMPORT] Event creation API error:', eventError)
-                console.error('📁 [IMPORT] Event error details:', JSON.stringify(eventError, null, 2))
-                console.error('📁 [IMPORT] Event error stack:', eventError.stack)
-                throw new Error(`Event creation API error: ${eventError.message}`)
+                // Check if it's a 409 conflict (event already exists)
+                const isConflict = eventError.details?.httpStatusCode === 409 || 
+                                  eventError.message?.includes('409') ||
+                                  eventError.details?.response?.status === 'ERROR'
+                
+                if (isConflict) {
+                    console.warn('[importRecordToDHIS2] ⚠️ Event 409 conflict - event already exists')
+                    
+                    // Extract conflict details from error response
+                    const conflictDetails = eventError.details?.response?.importSummaries?.[0]?.conflicts || []
+                    const conflictMessages = conflictDetails.map(c => `${c.object || c.property || 'field'}: ${c.value || c.message || 'conflict'}`).join(', ')
+                    console.log('[importRecordToDHIS2] Conflict details:', conflictMessages || 'No details available')
+                    
+                    // Remove event ID from payload to create a new event
+                    delete eventPayload.events[0].event
+                    
+                    // Use a truly unique event date (current timestamp with milliseconds)
+                    const now = new Date()
+                    // Add random milliseconds to ensure uniqueness
+                    const uniqueMs = now.getTime() + Math.floor(Math.random() * 10000)
+                    const uniqueDate = new Date(uniqueMs)
+                    eventPayload.events[0].eventDate = uniqueDate.toISOString().split('T')[0]
+                    
+                    // Also add a small time component to the date string if needed
+                    // But since eventDate is just a date (YYYY-MM-DD), we need to ensure different dates
+                    // If same day, we'll just accept that multiple events can exist on same day
+                    
+                    console.log('[importRecordToDHIS2] Creating new event with unique date:', eventPayload.events[0].eventDate)
+                    
+                    try {
+                        evtRes = await engine.mutate({
+                            resource: 'events',
+                            type: 'create',
+                            data: eventPayload
+                        })
+                        
+                        // Check if the response indicates success
+                        if (evtRes?.response?.status === 'SUCCESS' || evtRes?.response?.status === 'OK') {
+                            console.log('[importRecordToDHIS2] ✅ Created new event with unique date (conflict resolved)')
+                        } else {
+                            // Even if status is not SUCCESS, check if we got an event ID
+                            const eventId = evtRes?.response?.importSummaries?.[0]?.reference
+                            if (eventId) {
+                                console.log('[importRecordToDHIS2] ✅ Event created (got event ID):', eventId)
+                            } else {
+                                // Extract error details
+                                const importSummary = evtRes?.response?.importSummaries?.[0]
+                                const errorMsg = importSummary?.description || importSummary?.message || 'Event creation returned non-success status'
+                                const conflicts = importSummary?.conflicts || []
+                                if (conflicts.length > 0) {
+                                    const conflictMsg = conflicts.map(c => `${c.object || c.property}: ${c.value || c.message}`).join(', ')
+                                    throw new Error(`Event creation failed - conflicts: ${conflictMsg}`)
+                                }
+                                throw new Error(`Event creation failed: ${errorMsg}`)
+                            }
+                        }
+                    } catch (retryError) {
+                        console.error('[importRecordToDHIS2] ❌ FAILED - Event creation failed after conflict:', retryError)
+                        
+                        // Extract detailed error information
+                        let errorDetails = retryError.message || 'Unknown error'
+                        const errorResponse = retryError.details?.response || retryError.response
+                        
+                        if (errorResponse?.importSummaries?.[0]) {
+                            const summary = errorResponse.importSummaries[0]
+                            const conflicts = summary.conflicts || []
+                            if (conflicts.length > 0) {
+                                const conflictMsg = conflicts.map(c => `${c.object || c.property || 'field'}: ${c.value || c.message || 'conflict'}`).join(', ')
+                                errorDetails = `Conflicts: ${conflictMsg}`
+                            } else if (summary.description) {
+                                errorDetails = summary.description
+                            }
+                        } else if (errorResponse?.status === 'ERROR' && errorResponse?.importSummaries?.[0]?.description) {
+                            errorDetails = errorResponse.importSummaries[0].description
+                        }
+                        
+                        throw new Error(`Event creation failed: ${errorDetails}`)
+                    }
+                } else {
+                    console.error('[importRecordToDHIS2] ❌ FAILED - Event API error:', eventError)
+                    const errorDetails = eventError.details?.response?.importSummaries?.[0]?.description || 
+                                       eventError.message || 
+                                       'Unknown error'
+                    throw new Error(`Event creation API error: ${errorDetails}`)
+                }
             }
 
-            console.log('📁 [IMPORT] Event Response:', evtRes)
-            console.log('📁 [IMPORT] Event Response Status:', evtRes?.response?.status)
-            console.log('📁 [IMPORT] Event Response Details:', JSON.stringify(evtRes?.response, null, 2))
+
+            // Log event response for debugging
+            console.log('[importRecordToDHIS2] Event creation response:', {
+                status: evtRes?.response?.status,
+                importSummary: evtRes?.response?.importSummaries?.[0],
+                conflicts: evtRes?.response?.importSummaries?.[0]?.conflicts,
+                eventId: evtRes?.response?.importSummaries?.[0]?.reference
+            })
 
             if (evtRes?.response?.status === 'ERROR' || evtRes?.response?.status === 'WARNING') {
                 const importSummary = evtRes?.response?.importSummaries?.[0]
                 const errorDetails = importSummary?.description || 'Unknown error'
-                console.error('📁 [IMPORT] Event creation failed:', errorDetails)
-                console.error('📁 [IMPORT] Event import summary:', importSummary)
 
                 // Check for specific conflict errors in events
                 if (importSummary?.conflicts && importSummary.conflicts.length > 0) {
-                    const conflictDetails = importSummary.conflicts.map(c => c.value).join(', ')
-                    console.error('📁 [IMPORT] Event conflicts found:', conflictDetails)
+                    const conflictDetails = importSummary.conflicts.map(c => 
+                        `${c.object || c.property || 'field'}: ${c.value || c.message || 'invalid value'}`
+                    ).join(', ')
+                    console.error('[importRecordToDHIS2] Event conflicts:', importSummary.conflicts)
                     throw new Error(`Event creation failed - conflicts: ${conflictDetails}`)
                 }
                 
                 throw new Error(`Event creation failed: ${errorDetails}`)
             } else if (evtRes?.response?.status === 'SUCCESS') {
-                console.log('📁 [IMPORT] Event created successfully')
+                // Event created successfully - log which data values were saved
+                const savedEventId = evtRes?.response?.importSummaries?.[0]?.reference
+                console.log('[importRecordToDHIS2] Event created successfully:', savedEventId)
+                
+                // Verify risk screening values were included
+                const riskResultInPayload = validDataValues.find(dv => 
+                    dv.dataElement === config.mapping.programStageDataElements.riskScreeningResult
+                )
+                const riskScoreInPayload = validDataValues.find(dv => 
+                    dv.dataElement === config.mapping.programStageDataElements.riskScreeningScore
+                )
+                console.log('[importRecordToDHIS2] Risk screening in payload:', {
+                    riskResult: riskResultInPayload,
+                    riskScore: riskScoreInPayload
+                })
             } else {
-                console.error('📁 [IMPORT] Unexpected event response status:', evtRes?.response?.status)
-                console.error('📁 [IMPORT] Full event response:', evtRes)
                 throw new Error(`Event creation failed - unexpected status: ${evtRes?.response?.status}`)
             }
         }
@@ -1228,7 +1893,6 @@ export const importRecordToDHIS2 = async (data, orgUnitId, engine, config) => {
         }
 
     } catch (error) {
-        console.error('Import record error:', error)
         return {
             success: false,
             error: error.message
@@ -1321,7 +1985,6 @@ export const useDHIS2FormData = () => {
                 }
                 
                 // Log all data elements for debugging
-                console.log(`Data Element: ${dataElement.name} (${dataElement.id}) - Options: ${options.length}`)
             })
             
             return {
@@ -1330,7 +1993,6 @@ export const useDHIS2FormData = () => {
                 formFieldOptions
             }
         } catch (error) {
-            console.error('Error fetching form data:', error)
             return {
                 dataElements: [],
                 dataElementOptions: {},

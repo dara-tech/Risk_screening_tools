@@ -76,8 +76,7 @@ const ImportTool = () => {
                 setOrgUnits(filtered)
                 if (filtered.length > 0) setSelectedOrgUnit(filtered[0].id)
             } catch (e) {
-                console.error('Failed to load organisation units:', e)
-                showToast({ title: 'Error', description: 'Failed to load organization units', variant: 'error' })
+                showToast({ title: 'កំហុស', description: 'មិនអាចផ្ទុកអង្គការបាន', variant: 'error' })
             }
         }
         loadOrgUnits()
@@ -123,7 +122,6 @@ const ImportTool = () => {
                     appendLog(`Parsed CSV: ${processResult.processedRows}/${processResult.totalRows} valid rows`, 'info')
                 }
             } catch (error) {
-                console.error('Error processing file for preview:', error)
                 appendLog(`Failed to parse CSV: ${error.message}`, 'error')
             }
         }
@@ -142,24 +140,24 @@ const ImportTool = () => {
         const matches = supported.some(ext => lowerName.endsWith(ext))
         if (!matches) {
             validation.isValid = false
-            validation.errors.push(config?.messages?.errors?.unsupportedFormat || 'Unsupported file format')
+            validation.errors.push(config?.messages?.errors?.unsupportedFormat || 'ទម្រង់ឯកសារមិនត្រូវបានគាំទ្រ')
         }
 
         // Check file size (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
             validation.isValid = false
-            validation.errors.push('File size must be less than 10MB')
+            validation.errors.push('ទំហំឯកសារត្រូវតែតូចជាង 10MB')
         }
 
         // Check if file is empty
         if (file.size === 0) {
             validation.isValid = false
-            validation.errors.push('File cannot be empty')
+            validation.errors.push('ឯកសារមិនអាចទទេបាន')
         }
 
         // Warnings
         if (file.size > 5 * 1024 * 1024) {
-            validation.warnings.push('Large file detected. Upload may take longer.')
+            validation.warnings.push('បានរកឃើញឯកសារធំ។ ការផ្ទុកឡើងអាចចំណាយពេលយូរ។')
         }
 
         setFileValidation(validation)
@@ -202,7 +200,6 @@ const ImportTool = () => {
                     appendLog(`Parsed CSV: ${processResult.processedRows}/${processResult.totalRows} valid rows`, 'info')
                 }
             } catch (error) {
-                console.error('Error processing file for preview:', error)
                 appendLog(`Failed to parse CSV: ${error.message}`, 'error')
             }
         }
@@ -532,18 +529,29 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
     }
 
     const downloadTemplate = () => {
-        // Generate unique IDs for the template
-        const timestamp = Date.now()
+        // Generate unique IDs for the template with Khmer format
+        const generateUUIC = (index) => {
+            // Format: កយសត + 7-digit number (e.g., កយសត1150689)
+            // Start from 1150689 for first sample, increment for subsequent samples
+            const baseNumber = 1150688 + index
+            return `កយសត${baseNumber}`
+        }
+        
+        const generateSystemId = (index) => {
+            // Format: SYS + 7-digit number
+            const baseNumber = 1000000 + index
+            return `SYS${baseNumber}`
+        }
 
-        // Build header from canonical form order and labels (exclude age in template)
+        // Build header from canonical form order and labels - include both English and Khmer
         const exportColumns = TEMPLATE_COLUMNS
         const englishHeaders = exportColumns.map(col => col.labelEn || FORM_FIELD_LABELS[col.dataKey ?? col.key] || col.key)
         const khmerHeaders = exportColumns.map(col => col.labelKh || FORM_FIELD_LABELS_KH[col.dataKey ?? col.key] || '')
 
         // Example rows mapped by canonical keys (derived values left empty)
         const sample1 = {
-            systemId: `SYS_${timestamp}_001`,
-            uuic: `UUIC_${timestamp}_001`,
+            systemId: generateSystemId(1),
+            uuic: generateUUIC(1),
             donor: 'Donor 1',
             ngo: 'NGO 1',
             familyName: 'Doe',
@@ -585,8 +593,8 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
             riskLevel: ''
         }
         const sample2 = {
-            systemId: `SYS_${timestamp}_002`,
-            uuic: `UUIC_${timestamp}_002`,
+            systemId: generateSystemId(2),
+            uuic: generateUUIC(2),
             donor: 'Donor 2',
             ngo: 'NGO 2',
             familyName: 'Smith',
@@ -628,8 +636,8 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
             riskLevel: ''
         }
         const sample3 = {
-            systemId: `SYS_${timestamp}_003`,
-            uuic: `UUIC_${timestamp}_003`,
+            systemId: generateSystemId(3),
+            uuic: generateUUIC(3),
             donor: 'Donor 3',
             ngo: 'NGO 3',
             familyName: 'Johnson',
@@ -679,6 +687,7 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
             return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
         }).join(',')
 
+        // Include both English and Khmer headers in the template
         const content = [
             englishHeaders.join(','),
             khmerHeaders.join(','),
@@ -687,7 +696,7 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
             rowToCsv(sample3)
         ].join('\n')
 
-        const blob = new Blob([content], { type: 'text/csv' })
+        const blob = new Blob([content], { type: 'text/csv;charset=utf-8' })
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
@@ -696,8 +705,8 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
         window.URL.revokeObjectURL(url)
         
         showToast({
-            title: 'Template Downloaded',
-            description: 'CSV template ordered by form structure downloaded successfully',
+            title: 'បានទាញយកគំរូ',
+            description: 'បានទាញយកគំរូ CSV ដោយជោគជ័យ',
             variant: 'success'
         })
     }
@@ -705,8 +714,8 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
     const handleImport = async () => {
         if (!selectedFile) {
             showToast({
-                title: 'No File Selected',
-                description: 'Please select a CSV file to import',
+                title: 'មិនមានឯកសារត្រូវបានជ្រើសរើស',
+                description: 'សូមជ្រើសរើសឯកសារ CSV ដើម្បីនាំចូល',
                 variant: 'error'
             })
             return
@@ -714,8 +723,8 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
 
         if (!selectedOrgUnit) {
             showToast({
-                title: 'Select Location',
-                description: 'Please select an organization unit before importing',
+                title: 'ជ្រើសរើសទីតាំង',
+                description: 'សូមជ្រើសរើសអង្គការមុននាំចូល',
                 variant: 'error'
             })
             return
@@ -723,7 +732,7 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
 
         if (fileValidation && !fileValidation.isValid) {
             showToast({
-                title: 'File Validation Failed',
+                title: 'ការផ្ទៀងផ្ទាត់ឯកសារបរាជ័យ',
                 description: fileValidation.errors.join(', '),
                 variant: 'error'
             })
@@ -763,7 +772,6 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
             // Phase 2: Real import (processingProgress reflects actual row progress)
 
             // Real import process using new functions (like manual input)
-            console.log('📁 [IMPORT] Starting improved import process (like manual input)...')
             appendLog('Starting import process...', 'info')
             
             const text = await readFileToCsvText(selectedFile)
@@ -777,7 +785,6 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
             }
             
             const { data: processedData, totalRows } = processResult
-            console.log(`📁 [IMPORT] Processed ${processedData.length} valid records from ${totalRows} total rows`)
             appendLog(`Validated CSV: ${processedData.length}/${totalRows} valid rows`, 'info')
 
             let success = 0, failed = 0, skipped = 0
@@ -790,18 +797,16 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                     const recordData = processedData[i]
                     
                     if (!recordData.isValid) {
-                        console.log(`📁 [IMPORT] Row ${i + 1}: Skipping invalid record`)
                         skipped++
                         appendLog(`Row ${i + 1}: Skipped (invalid)`, 'warning')
                         setRowResults(prev => [...prev, {
                             row: i + 1,
                             systemId: recordData.data.systemId || '-'
-                            , status: 'skipped', message: 'Validation failed'
+                            , status: 'skipped', message: 'ការផ្ទៀងផ្ទាត់បរាជ័យ'
                         }])
                         continue
                     }
                     
-                    console.log(`📁 [IMPORT] Row ${i + 1}: Processing record - System ID: ${recordData.data.systemId}, UUIC: ${recordData.data.uuic}`)
                     appendLog(`Row ${i + 1}: Importing TEI ${recordData.data.systemId}`, 'info')
 
                     // Import record to DHIS2 (like manual input save process)
@@ -809,7 +814,6 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                     
                     if (importResult.success) {
                         success++
-                        console.log(`📁 [IMPORT] Row ${i + 1}: ✅ SUCCESS - TEI: ${importResult.teiId}`)
                         appendLog(`Row ${i + 1}: Success (TEI ${importResult.teiId})`, 'success')
                         setRowResults(prev => [...prev, {
                             row: i + 1,
@@ -819,13 +823,12 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                         }])
                     } else {
                         failed++
-                        console.error(`📁 [IMPORT] Row ${i + 1}: ❌ FAILED - ${importResult.error}`)
                         appendLog(`Row ${i + 1}: Failed - ${importResult.error}`, 'error')
                         setRowResults(prev => [...prev, {
                             row: i + 1,
                             systemId: recordData.data.systemId || '-',
                             status: 'failed',
-                            message: importResult.error || 'Unknown error'
+                            message: importResult.error || 'កំហុសមិនស្គាល់'
                         }])
                     }
 
@@ -837,7 +840,7 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                         row: i + 1,
                         systemId: recordData?.data?.systemId || '-',
                         status: 'failed',
-                        message: rowErr.message || 'Unknown error'
+                        message: rowErr.message || 'កំហុសមិនស្គាល់'
                     }])
                 }
 
@@ -865,8 +868,8 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
             setImportStats(stats)
 
             showToast({
-                title: 'Import Completed',
-                description: `Successfully imported ${success} records (${failed} failed, ${skipped} skipped)`,
+                title: 'ការនាំចូលបានបញ្ចប់',
+                description: `បាននាំចូល ${success} កំណត់ត្រាដោយជោគជ័យ (${failed} បរាជ័យ, ${skipped} លែងទុក)`,
                 variant: success > 0 ? 'success' : 'error'
             })
 
@@ -883,7 +886,7 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
         } catch (error) {
             setUploadPhase('idle')
             showToast({
-                title: 'Import Failed',
+                title: 'ការនាំចូលបរាជ័យ',
                 description: error.message,
                 variant: 'error'
             })
@@ -895,7 +898,7 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
 
     const SectionHeader = ({ icon: Icon, title, subtitle, gradient = "from-blue-500 to-purple-500" }) => (
         <div className="flex items-center space-x-3 mb-6">
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+            <div className={`w-10 h-10 rounded-none bg-gradient-to-br ${gradient} flex items-center justify-center`}>
                 <Icon className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -913,14 +916,14 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
         const isFuture = !isActive && !isPast && currentPhase !== 'completed'
         
         return (
-            <div className={`flex items-center space-x-4 p-4 rounded-xl transition-all duration-300 ${
+            <div className={`flex items-center space-x-4 p-4 rounded-none transition-all duration-300 ${
                 isActive 
                     ? `${color} bg-opacity-10 border ${color} border-opacity-20` 
                     : isPast
                         ? 'bg-green-50 border border-green-200'
                         : 'bg-gray-50'
             }`}>
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300 ${
+                <div className={`w-10 h-10 rounded-none flex items-center justify-center transition-all duration-300 ${
                     isActive 
                         ? color 
                         : isPast
@@ -973,7 +976,7 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                                 ? 'text-green-600'
                                 : 'text-gray-500'
                     }`}>
-                        {isPast ? 'Completed successfully' : description}
+                        {isPast ? 'បានបញ្ចប់ដោយជោគជ័យ' : description}
                     </p>
                 </div>
             </div>
@@ -990,68 +993,68 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                     
                     {/* Header */}
                     <div className="text-center space-y-3">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-green-50 to-blue-50 border border-green-100">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-none bg-gradient-to-br from-green-50 to-blue-50 border border-green-100">
                             <Upload className="w-8 h-8 text-green-600" />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Import Tool</h2>
-                            <p className="text-gray-600 text-sm font-medium mt-1">Import data from CSV file to DHIS2</p>
+                            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">ឧបករណ៍នាំចូល</h2>
+                            <p className="text-gray-600 text-sm font-medium mt-1">នាំចូលទិន្នន័យពីឯកសារ CSV ទៅកាន់ DHIS2</p>
                         </div>
                     </div>
 
                     {/* Import Options Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Download Template */}
-                        <Card className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 hover:border-blue-300 transition-all duration-200">
+                        <Card className="bg-white/80 backdrop-blur-sm rounded-none border border-gray-200 hover:border-blue-300 transition-all duration-200">
                             <CardContent className="p-6 flex flex-col h-full">
                                 <div className="flex items-center space-x-3 mb-4">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                                    <div className="w-10 h-10 rounded-none bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
                                         <FileText className="w-5 h-5 text-white" />
                                     </div>
                                     <div>
-                                        <h3 className="font-semibold text-gray-900">Download Template</h3>
-                                        <p className="text-xs text-gray-500">Get CSV template</p>
+                                        <h3 className="font-semibold text-gray-900">ទាញយកគំរូ</h3>
+                                        <p className="text-xs text-gray-500">ទាញយកគំរូ CSV</p>
                                     </div>
                                 </div>
                                 <p className="text-sm text-gray-600 mb-4 flex-grow">
-                                    Download the complete CSV template with all 38 fields for STI screening data
+                                    ទាញយកគំរូ CSV ពេញលេញជាមួយនឹងចម្បង 38 សម្រាប់ទិន្នន័យវាយតម្លៃ STI
                                 </p>
                                 <Button 
                                     onClick={downloadTemplate}
-                                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl"
+                                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-none"
                                 >
                                     <FiDownload className="w-4 h-4 mr-2" />
-                                    Download Template
+                                    ទាញយកគំរូ
                                 </Button>
                             </CardContent>
                         </Card>
 
                         {/* Import Data */}
-                        <Card className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 hover:border-green-300 transition-all duration-200">
+                        <Card className="bg-white/80 backdrop-blur-sm rounded-none border border-gray-200 hover:border-green-300 transition-all duration-200">
                             <CardContent className="p-6 flex flex-col h-full">
                                 <div className="flex items-center space-x-3 mb-4">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center">
+                                    <div className="w-10 h-10 rounded-none bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center">
                                         <Database className="w-5 h-5 text-white" />
                                     </div>
                                     <div>
-                                        <h3 className="font-semibold text-gray-900">Import Data</h3>
-                                        <p className="text-xs text-gray-500">Real DHIS2 import</p>
+                                        <h3 className="font-semibold text-gray-900">នាំចូលទិន្នន័យ</h3>
+                                        <p className="text-xs text-gray-500">នាំចូល DHIS2 ពិតប្រាកដ</p>
                                     </div>
                                 </div>
                                 <p className="text-sm text-gray-600 mb-4">
-                                    Upload your CSV file to import data into DHIS2
+                                    ផ្ទុកឡើងឯកសារ CSV របស់អ្នកដើម្បីនាំចូលទិន្នន័យទៅកាន់ DHIS2
                                 </p>
                                 {/* Org Unit Selector */}
                                 <div className="space-y-2 mb-4">
                                     <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
                                         <FiMapPin className="w-4 h-4 text-gray-500" />
-                                        <span>Location</span>
+                                        <span>ទីតាំង</span>
                                     </label>
                                     <Select value={selectedOrgUnit} onValueChange={setSelectedOrgUnit}>
-                                        <SelectTrigger className="h-10 bg-white border border-gray-300 rounded-md focus:border-gray-400 focus:ring-1 focus:ring-gray-400">
-                                            <SelectValue placeholder="Select organization unit" />
+                                        <SelectTrigger className="h-10 bg-white border border-gray-300 rounded-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400">
+                                            <SelectValue placeholder="ជ្រើសរើសអង្គការ" />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-white border border-gray-200 rounded-md max-h-60 shadow-lg">
+                                        <SelectContent className="bg-white border border-gray-200 rounded-none max-h-60 shadow-lg">
                                             {orgUnits.map(ou => (
                                                 <SelectItem key={ou.id} value={ou.id} className="hover:bg-gray-50">
                                                     {ou.displayName || ou.id}
@@ -1063,14 +1066,14 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                                 <Button 
                                     onClick={handleImport}
                                     disabled={!selectedFile || importing || (fileValidation && !fileValidation.isValid) || !selectedOrgUnit || (processedData && processedData.processedRows === 0)}
-                                    className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-xl"
+                                    className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-none"
                                 >
                                     <FiUpload className="w-4 h-4 mr-2" />
-                                    {importing ? 'Processing...' : 'Import Data'}
+                                    {importing ? 'កំពុងដំណើរការ...' : 'នាំចូលទិន្នន័យ'}
                                 </Button>
                                 {processedData && processedData.processedRows === 0 && (
                                     <p className="text-xs text-red-600 mt-2">
-                                        ⚠️ No valid records found. Please check your CSV file format.
+                                        ⚠️ មិនមានកំណត់ត្រាត្រឹមត្រូវរកឃើញ។ សូមពិនិត្យទម្រង់ឯកសារ CSV របស់អ្នក។
                                     </p>
                                 )}
                             </CardContent>
@@ -1080,58 +1083,58 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                     </div>
 
                     {/* File Upload Area */}
-                    <Card className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200">
+                    <Card className="bg-white/80 backdrop-blur-sm rounded-none border border-gray-200">
                         <CardHeader className="pb-4">
                             <SectionHeader 
                                 icon={FiUpload}
-                                title="Upload CSV File"
-                                subtitle="Drag and drop or select your CSV file"
+                                title="ផ្ទុកឡើងឯកសារ CSV"
+                                subtitle="ទាញដាក់ ឬជ្រើសរើសឯកសារ CSV របស់អ្នក"
                                 gradient="from-blue-500 to-indigo-500"
                             />
                         </CardHeader>
                         <CardContent>
                             {/* Data Preview */}
                             {processedData && (
-                                <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                                <div className="mb-6 p-4 bg-blue-50 rounded-none border border-blue-200">
                                     <div className="flex items-center justify-between mb-3">
-                                        <h4 className="font-semibold text-blue-900">Data Preview</h4>
+                                        <h4 className="font-semibold text-blue-900">មើលទិន្នន័យមុន</h4>
                                         <Button
                                             variant="outline"
                                             size="sm"
                                             onClick={() => setShowPreview(!showPreview)}
                                             className="text-blue-700 border-blue-300 hover:bg-blue-100"
                                         >
-                                            {showPreview ? 'Hide Preview' : 'Show Preview'}
+                                            {showPreview ? 'លាក់ការមើលមុន' : 'បង្ហាញការមើលមុន'}
                                         </Button>
                                     </div>
                                     <div className="text-sm text-blue-700 space-y-1">
                                         <div className="flex items-center space-x-2">
                                             <FiDatabase className="w-4 h-4" />
-                                            <span><strong>{processedData.processedRows}</strong> valid records found</span>
+                                            <span><strong>{processedData.processedRows}</strong> កំណត់ត្រាត្រឹមត្រូវត្រូវបានរកឃើញ</span>
                                         </div>
                                         <div className="flex items-center space-x-2">
                                             <FileText className="w-4 h-4" />
-                                            <span><strong>{processedData.totalRows}</strong> total rows in file</span>
+                                            <span><strong>{processedData.totalRows}</strong> ជួរសរុបនៅក្នុងឯកសារ</span>
                                         </div>
                                         {processedData.data.length > 0 && (
                                             <div className="flex items-center space-x-2">
                                                 <FiCheckCircle className="w-4 h-4" />
-                                                <span>Data validation completed successfully</span>
+                                                <span>ការផ្ទៀងផ្ទាត់ទិន្នន័យបានបញ្ចប់ដោយជោគជ័យ</span>
                                             </div>
                                         )}
                                     </div>
                                     
                                     {showPreview && processedData.data.length > 0 && (
                                         <div className="mt-4 max-h-60 overflow-y-auto">
-                                            <div className="bg-white rounded-lg border border-blue-200">
+                                            <div className="bg-white rounded-none border border-blue-200">
                                                 <div className="p-3 border-b border-blue-200 bg-blue-50">
-                                                    <h5 className="font-medium text-blue-900">First 3 Records Preview:</h5>
+                                                    <h5 className="font-medium text-blue-900">មើលមុនកំណត់ត្រា 3 ដំបូង:</h5>
                                                 </div>
                                                 <div className="p-3 space-y-2">
                                                     {processedData.data.slice(0, 3).map((record, index) => (
-                                                        <div key={index} className="p-2 bg-gray-50 rounded border">
+                                                        <div key={index} className="p-2 bg-gray-50 rounded-none border">
                                                             <div className="text-xs text-gray-600 mb-1">
-                                                                Record {index + 1} - {record.data.systemId}
+                                                                កំណត់ត្រា {index + 1} - {record.data.systemId}
                                                             </div>
                                                             <div className="grid grid-cols-2 gap-3 text-xs">
                                                                 {templateColumns.map(({ key, labelEn, labelKh }) => (
@@ -1152,12 +1155,12 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                                                             </div>
                                                             {record.errors.length > 0 && (
                                                                 <div className="mt-1 text-xs text-red-600">
-                                                                    ⚠️ {record.errors.length} validation errors
+                                                                    ⚠️ {record.errors.length} កំហុសផ្ទៀងផ្ទាត់
                                                                 </div>
                                                             )}
                                                             {record.warnings.length > 0 && (
                                                                 <div className="mt-1 text-xs text-yellow-600">
-                                                                    ⚠️ {record.warnings.length} warnings
+                                                                    ⚠️ {record.warnings.length} ព្រមាន
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1169,7 +1172,7 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                                 </div>
                             )}
                             <div
-                                className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-200 ${
+                                className={`border-2 border-dashed rounded-none p-8 text-center transition-all duration-200 ${
                                     dragActive 
                                         ? 'border-blue-400 bg-blue-50/50' 
                                         : selectedFile 
@@ -1184,7 +1187,7 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                                 {selectedFile ? (
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-center">
-                                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
+                                            <div className="w-16 h-16 rounded-none bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
                                                 <FiCheckCircle className="w-8 h-8 text-green-600" />
                                             </div>
                                         </div>
@@ -1199,13 +1202,13 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                                         {fileValidation && (
                                             <div className="space-y-2">
                                                 {fileValidation.errors.length > 0 && (
-                                                    <div className="flex items-center space-x-2 p-3 bg-red-50 rounded-lg border border-red-200">
+                                                    <div className="flex items-center space-x-2 p-3 bg-red-50 rounded-none border border-red-200">
                                                         <FiAlertCircle className="w-4 h-4 text-red-600" />
                                                         <span className="text-sm text-red-700">{fileValidation.errors[0]}</span>
                                                     </div>
                                                 )}
                                                 {fileValidation.warnings.length > 0 && (
-                                                    <div className="flex items-center space-x-2 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                                                    <div className="flex items-center space-x-2 p-3 bg-yellow-50 rounded-none border border-yellow-200">
                                                         <FiInfo className="w-4 h-4 text-yellow-600" />
                                                         <span className="text-sm text-yellow-700">{fileValidation.warnings[0]}</span>
                                                     </div>
@@ -1219,25 +1222,25 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                                                 setSelectedFile(null)
                                                 setFileValidation(null)
                                             }}
-                                            className="mt-4 border-gray-200 hover:border-red-300 text-gray-700 hover:text-red-700 rounded-xl"
+                                            className="mt-4 border-gray-200 hover:border-red-300 text-gray-700 hover:text-red-700 rounded-none"
                                         >
                                             <FiX className="w-4 h-4 mr-2" />
-                                            Remove File
+                                            លុបឯកសារ
                                         </Button>
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-center">
-                                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                                            <div className="w-16 h-16 rounded-none bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                                                 <FiFile className="w-8 h-8 text-gray-500" />
                                             </div>
                                         </div>
                                         <div>
                                             <p className="text-lg font-semibold text-gray-900">
-                                                Drop your CSV file here
+                                                ទាញដាក់ឯកសារ CSV របស់អ្នកនៅទីនេះ
                                             </p>
                                             <p className="text-sm text-gray-500">
-                                                or click to browse files
+                                                ឬចុចដើម្បីរកមើលឯកសារ
                                             </p>
                                         </div>
                                         <div className="relative">
@@ -1250,9 +1253,9 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                                             />
                                             <Button 
                                                 variant="outline" 
-                                                className="w-full border-gray-200 hover:border-blue-300 text-gray-700 hover:text-blue-700 rounded-xl"
+                                                className="w-full border-gray-200 hover:border-blue-300 text-gray-700 hover:text-blue-700 rounded-none"
                                             >
-                                                Choose File
+                                                ជ្រើសរើសឯកសារ
                                             </Button>
                                         </div>
                                     </div>
@@ -1263,11 +1266,11 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
 
                     {/* Advanced Progress System */}
                     {importing && (
-                        <Card className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200">
+                        <Card className="bg-white/80 backdrop-blur-sm rounded-none border border-gray-200">
                             <CardHeader>
                                 <CardTitle className="flex items-center space-x-2">
                                     <Activity className="w-5 h-5 text-blue-600" />
-                                    <span>Import Progress</span>
+                                    <span>វឌ្ឍនភាពនាំចូល</span>
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
@@ -1275,7 +1278,7 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                                     {/* Overall Progress Bar */}
                                     <div className="mb-6">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="text-sm font-medium text-gray-900">Overall Progress</span>
+                                            <span className="text-sm font-medium text-gray-900">វឌ្ឍនភាពសរុប</span>
                                             <span className="text-sm text-gray-500">
                                                 {uploadPhase === 'completed' ? 100 :
                                                  uploadPhase === 'processing' ? Math.round(30 + (processingProgress * 0.7)) :
@@ -1295,10 +1298,10 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                                         phase="uploading"
                                         currentPhase={uploadPhase}
                                         progress={uploadProgress}
-                                        title="Uploading File"
+                                        title="កំពុងផ្ទុកឡើងឯកសារ"
                                         description={uploadPhase === 'uploading' ? 
-                                            `Uploading ${selectedFile?.name} (${(selectedFile?.size / 1024).toFixed(1)} KB)` :
-                                            "File uploaded successfully"}
+                                            `កំពុងផ្ទុកឡើង ${selectedFile?.name} (${(selectedFile?.size / 1024).toFixed(1)} KB)` :
+                                            "ឯកសារត្រូវបានផ្ទុកឡើងដោយជោគជ័យ"}
                                         icon={FiUpload}
                                         color="bg-blue-500"
                                         isCompleted={uploadPhase === 'processing' || uploadPhase === 'completed'}
@@ -1309,12 +1312,12 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                                         phase="processing"
                                         currentPhase={uploadPhase}
                                         progress={processingProgress}
-                                        title="Processing Data"
+                                        title="កំពុងដំណើរការទិន្នន័យ"
                                         description={uploadPhase === 'processing' ? 
-                                            (processingProgress < 30 ? "Validating file format and data structure" :
-                                             processingProgress < 80 ? "Importing records to DHIS2" :
-                                             "Finalizing import and updating indexes") :
-                                            "Data processing completed"}
+                                            (processingProgress < 30 ? "កំពុងផ្ទៀងផ្ទាត់ទម្រង់ឯកសារ និងរចនាសម្ព័ន្ធទិន្នន័យ" :
+                                             processingProgress < 80 ? "កំពុងនាំចូលកំណត់ត្រាទៅកាន់ DHIS2" :
+                                             "កំពុងបញ្ចប់ការនាំចូល និងធ្វើបច្ចុប្បន្នភាពលិបិក្រម") :
+                                            "ការដំណើរការទិន្នន័យបានបញ្ចប់"}
                                         icon={FiDatabase}
                                         color="bg-green-500"
                                         isCompleted={uploadPhase === 'completed'}
@@ -1325,10 +1328,10 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                                         phase="completed"
                                         currentPhase={uploadPhase}
                                         progress={uploadPhase === 'completed' ? 100 : 0}
-                                        title="Import Completed"
+                                        title="ការនាំចូលបានបញ្ចប់"
                                         description={uploadPhase === 'completed' ? 
-                                            `Successfully imported ${importStats?.successful || 0} records` :
-                                            "Waiting for processing to complete"}
+                                            `បាននាំចូល ${importStats?.successful || 0} កំណត់ត្រាដោយជោគជ័យ` :
+                                            "កំពុងរង់ចាំការដំណើរការបញ្ចប់"}
                                         icon={FiCheckCircle}
                                         color="bg-green-500"
                                         isCompleted={uploadPhase === 'completed'}
@@ -1339,20 +1342,20 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                     )}
 
                     {/* Live Logs */}
-                    <Card className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200">
+                    <Card className="bg-white/80 backdrop-blur-sm rounded-none border border-gray-200">
                         <CardHeader className="pb-2">
                             <div className="flex items-center justify-between">
                                 <CardTitle className="flex items-center space-x-2">
                                     <Activity className="w-5 h-5 text-gray-700" />
-                                    <span>Live Logs</span>
+                                    <span>កំណត់ត្រាផ្ទាល់</span>
                                 </CardTitle>
-                                <Button variant="outline" size="sm" onClick={clearLogs} className="border-gray-200 hover:border-red-300 text-gray-700 hover:text-red-700 rounded-xl">Clear</Button>
+                                <Button variant="outline" size="sm" onClick={clearLogs} className="border-gray-200 hover:border-red-300 text-gray-700 hover:text-red-700 rounded-none">សម្អាត</Button>
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="h-48 overflow-y-auto bg-gray-50 rounded-xl border border-gray-200 p-3 space-y-1">
+                            <div className="h-48 overflow-y-auto bg-gray-50 rounded-none border border-gray-200 p-3 space-y-1">
                                 {logs.length === 0 && (
-                                    <p className="text-sm text-gray-500">No logs yet. Start an import to see streaming logs.</p>
+                                    <p className="text-sm text-gray-500">មិនមានកំណត់ត្រានៅឡើយ។ ចាប់ផ្តើមនាំចូលដើម្បីមើលកំណត់ត្រាផ្ទាល់។</p>
                                 )}
                                 {logs.map((l, idx) => (
                                     <div key={idx} className={`text-xs ${l.level === 'error' ? 'text-red-700' : l.level === 'warning' ? 'text-yellow-700' : l.level === 'success' ? 'text-green-700' : 'text-gray-700'}`}>
@@ -1367,67 +1370,67 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
 
                     {/* Import Statistics */}
                     {importStats && (
-                        <Card className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200">
+                        <Card className="bg-white/80 backdrop-blur-sm rounded-none border border-gray-200">
                             <CardHeader>
                                 <CardTitle className="flex items-center space-x-2">
                                     <BarChart3 className="w-5 h-5 text-purple-600" />
-                                    <span>Import Statistics</span>
+                                    <span>ស្ថិតិនាំចូល</span>
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div className="text-center p-4 bg-green-50 rounded-xl border border-green-200">
+                                    <div className="text-center p-4 bg-green-50 rounded-none border border-green-200">
                                         <p className="text-2xl font-bold text-green-600">{importStats.successful}</p>
-                                        <p className="text-sm text-green-700">Successful</p>
+                                        <p className="text-sm text-green-700">ជោគជ័យ</p>
                                     </div>
-                                    <div className="text-center p-4 bg-red-50 rounded-xl border border-red-200">
+                                    <div className="text-center p-4 bg-red-50 rounded-none border border-red-200">
                                         <p className="text-2xl font-bold text-red-600">{importStats.failed}</p>
-                                        <p className="text-sm text-red-700">Failed</p>
+                                        <p className="text-sm text-red-700">បរាជ័យ</p>
                                     </div>
-                                    <div className="text-center p-4 bg-yellow-50 rounded-xl border border-yellow-200">
+                                    <div className="text-center p-4 bg-yellow-50 rounded-none border border-yellow-200">
                                         <p className="text-2xl font-bold text-yellow-600">{importStats.skipped}</p>
-                                        <p className="text-sm text-yellow-700">Skipped</p>
+                                        <p className="text-sm text-yellow-700">លែងទុក</p>
                                     </div>
-                                    <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
+                                    <div className="text-center p-4 bg-blue-50 rounded-none border border-blue-200">
                                         <p className="text-2xl font-bold text-blue-600">{importStats.totalRecords}</p>
-                                        <p className="text-sm text-blue-700">Total</p>
+                                        <p className="text-sm text-blue-700">សរុប</p>
                                     </div>
                                 </div>
                                 <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
                                     <div className="flex items-center space-x-2">
                                         <FiClock className="w-4 h-4" />
-                                        <span>Processing time: {importStats.processingTime}s</span>
+                                        <span>ពេលវេលាដំណើរការ: {importStats.processingTime}វិ</span>
                                     </div>
                                     <div className="flex items-center space-x-2">
                                         <FiTrendingUp className="w-4 h-4" />
-                                        <span>Success rate: {((importStats.successful / importStats.totalRecords) * 100).toFixed(1)}%</span>
+                                        <span>អត្រាជោគជ័យ: {((importStats.successful / importStats.totalRecords) * 100).toFixed(1)}%</span>
                                     </div>
                                 </div>
 
                                 {/* Row details and filter */}
                                 <div className="mt-6">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h4 className="font-medium text-gray-900">Row Results</h4>
+                                        <h4 className="font-medium text-gray-900">លទ្ធផលជួរ</h4>
                                         <Select value={resultFilter} onValueChange={setResultFilter}>
-                                            <SelectTrigger className="h-8 w-40 bg-white border border-gray-300 rounded-md">
-                                                <SelectValue placeholder="Filter" />
+                                            <SelectTrigger className="h-8 w-40 bg-white border border-gray-300 rounded-none">
+                                                <SelectValue placeholder="តម្រង" />
                                             </SelectTrigger>
-                                            <SelectContent className="bg-white border border-gray-200 rounded-md">
-                                                <SelectItem value="all">All</SelectItem>
-                                                <SelectItem value="success">Success</SelectItem>
-                                                <SelectItem value="failed">Failed</SelectItem>
-                                                <SelectItem value="skipped">Skipped</SelectItem>
+                                            <SelectContent className="bg-white border border-gray-200 rounded-none">
+                                                <SelectItem value="all">ទាំងអស់</SelectItem>
+                                                <SelectItem value="success">ជោគជ័យ</SelectItem>
+                                                <SelectItem value="failed">បរាជ័យ</SelectItem>
+                                                <SelectItem value="skipped">លែងទុក</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <div className="max-h-56 overflow-y-auto border border-gray-200 rounded-xl">
+                                    <div className="max-h-56 overflow-y-auto border border-gray-200 rounded-none">
                                         <table className="w-full text-sm">
                                             <thead className="bg-gray-50 text-gray-600">
                                                 <tr>
-                                                    <th className="text-left px-3 py-2">Row</th>
-                                                    <th className="text-left px-3 py-2">System ID</th>
-                                                    <th className="text-left px-3 py-2">Status</th>
-                                                    <th className="text-left px-3 py-2">Message</th>
+                                                    <th className="text-left px-3 py-2">ជួរ</th>
+                                                    <th className="text-left px-3 py-2">លេខសម្គាល់ប្រព័ន្ធ</th>
+                                                    <th className="text-left px-3 py-2">ស្ថានភាព</th>
+                                                    <th className="text-left px-3 py-2">សារ</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1438,8 +1441,8 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                                                             <td className="px-3 py-2 text-gray-700">{r.row}</td>
                                                             <td className="px-3 py-2 text-gray-700">{r.systemId}</td>
                                                             <td className="px-3 py-2">
-                                                                <span className={`px-2 py-0.5 rounded text-xs ${r.status === 'success' ? 'bg-green-100 text-green-700' : r.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                                                    {r.status}
+                                                                <span className={`px-2 py-0.5 rounded-none text-xs ${r.status === 'success' ? 'bg-green-100 text-green-700' : r.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                                    {r.status === 'success' ? 'ជោគជ័យ' : r.status === 'failed' ? 'បរាជ័យ' : 'លែងទុក'}
                                                                 </span>
                                                             </td>
                                                             <td className="px-3 py-2 text-gray-600">{r.message}</td>
@@ -1447,7 +1450,7 @@ TEST_SYS_001,TEST_UUIC_001,Doe,John,Male,1990-05-15,Phnom Penh,OD001,District 1,
                                                     ))}
                                                 {rowResults.length === 0 && (
                                                     <tr>
-                                                        <td className="px-3 py-3 text-gray-500" colSpan={4}>No row results captured</td>
+                                                        <td className="px-3 py-3 text-gray-500" colSpan={4}>មិនមានលទ្ធផលជួរត្រូវបានកត់ត្រា</td>
                                                     </tr>
                                                 )}
                                             </tbody>

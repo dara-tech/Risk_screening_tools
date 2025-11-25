@@ -42,7 +42,7 @@ const Tooltip = ({ children, content, position = 'top', className = '' }) => {
             {isVisible && (
                 <div
                     ref={tooltipRef}
-                    className={`absolute z-50 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded-md shadow-lg whitespace-nowrap ${getPositionClasses()} ${className}`}
+                    className={`absolute z-50 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded-none shadow-lg whitespace-nowrap ${getPositionClasses()} ${className}`}
                 >
                     {content}
                     <div className={`absolute w-2 h-2 bg-gray-900 transform rotate-45 ${

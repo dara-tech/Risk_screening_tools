@@ -32,6 +32,14 @@ export let programStageDataElements = [
         valueType: 'TEXT',
         translations: [{ property: 'NAME', locale: 'km', value: '៤.៣ដៃគូរូមភេទរបស់អ្នកមានអត្តសញ្ញាណភេទជា "ស្ត្រីប្លែងភេទ"' }]
     },
+    // Sort Order 4.4
+    {
+        id: 'okL7Z9mXVnU',
+        name: '4.4Your partner\'s sexual identify is TGM',
+        formName: 'partnerTGM',
+        valueType: 'TRUE_ONLY',
+        translations: [{ property: 'NAME', locale: 'km', value: '៤.៤ដៃគូរូមភេទរបស់អ្នកមានអត្តសញ្ញាណភេទជា "ប្រុសប្លែងភេទ"' }]
+    },
     // Sort Order 5
     {
         id: 'qa4gp2GMQUA',
@@ -197,7 +205,7 @@ export let programStageDataElements = [
         id: 'HZzeCzQOuvh',
         name: '3. Have you ever concerns/worries about your sexual health?',
         formName: 'sexualHealthConcerns',
-        valueType: 'TEXT',
+        valueType: 'BOOLEAN',
         translations: [{ property: 'NAME', locale: 'km', value: '៣. តើធ្លាប់មានការព្រួយបារម្ភអំពីសុខភាពផ្លូវភេទដែរឬទេ?' }]
     },
     // Sort Order 26
@@ -229,20 +237,38 @@ export let programStageDataElements = [
 // Function to fetch and update program stage data from DHIS2
 export const fetchAndUpdateProgramStageData = async (engine, programStageId = 'hqJKFmOU6s7') => {
     try {
-        console.log('Fetching program stage data from DHIS2...')
+        console.log('Fetching program stage data from DHIS2...', { programStageId })
         
         const response = await engine.query({
             programStage: {
                 resource: 'programStages',
                 id: programStageId,
                 params: {
-                    fields: 'id,name,programStageDataElements[dataElement[id,name,shortName,valueType,code,formName]]'
+                    fields: 'id,name,programStageDataElements[dataElement[id,name,shortName,valueType,code,formName,optionSet[id,name,options[id,name,code]],translations[property,locale,value]]]'
                 }
             }
         })
         
         const stageData = response.programStage
-        console.log('Program stage data fetched:', stageData)
+        console.log('Program stage data fetched:', {
+            stageId: stageData?.id,
+            stageName: stageData?.name,
+            dataElementCount: stageData?.programStageDataElements?.length,
+            dataElementIds: stageData?.programStageDataElements?.map(psde => psde.dataElement?.id) || []
+        })
+        
+        // Check if riskScreeningResult is in the program stage
+        const riskResultId = 'MBizmGFOeZg'
+        const hasRiskResult = stageData?.programStageDataElements?.some(
+            psde => psde.dataElement?.id === riskResultId
+        )
+        console.log('Risk screening result in program stage:', {
+            riskResultId,
+            found: hasRiskResult,
+            dataElement: stageData?.programStageDataElements?.find(
+                psde => psde.dataElement?.id === riskResultId
+            )?.dataElement
+        })
         
         if (stageData?.programStageDataElements) {
             // Convert to our format
@@ -253,8 +279,10 @@ export const fetchAndUpdateProgramStageData = async (engine, programStageId = 'h
                     valueType: psde.dataElement.valueType,
                     shortName: psde.dataElement.shortName,
                     code: psde.dataElement.code,
-                    formName: psde.dataElement.formName
-                }
+                    formName: psde.dataElement.formName,
+                    translations: psde.dataElement.translations || []
+                },
+                translations: psde.dataElement.translations || []
             }))
             
             // Update the static array
@@ -266,7 +294,16 @@ export const fetchAndUpdateProgramStageData = async (engine, programStageId = 'h
         
         return []
     } catch (error) {
-        console.error('Error fetching program stage data:', error)
+        // Check if it's a 404 error
+        const is404 = error.message?.includes('404') || 
+                     error.details?.httpStatusCode === 404 ||
+                     error.response?.status === 404
+        
+        if (is404) {
+            console.warn(`[programStageData] Program stage ${programStageId} not found (404) - using static data`)
+        } else {
+            console.error('[programStageData] Error fetching program stage data:', error)
+        }
         return []
     }
 }

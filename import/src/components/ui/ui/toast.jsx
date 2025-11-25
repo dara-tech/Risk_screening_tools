@@ -5,7 +5,7 @@ const ToastContext = React.createContext({ showToast: () => {} })
 export const ToastProvider = ({ children }) => {
     const [toasts, setToasts] = React.useState([])
 
-    const showToast = React.useCallback(({ title, description, variant = 'success', duration = 4000 }) => {
+    const showToast = React.useCallback(({ title, description, variant = 'success', duration = 2800 }) => {
         const id = Math.random().toString(36).slice(2)
         setToasts(prev => [...prev, { id, title, description, variant }])
         window.setTimeout(() => {
@@ -16,19 +16,19 @@ export const ToastProvider = ({ children }) => {
     return (
         <ToastContext.Provider value={{ showToast }}>
             {children}
-            <div className="fixed top-4 right-4 z-50 space-y-2">
+            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 space-y-2">
                 {toasts.map(t => (
-                    <div key={t.id} className={`min-w-[280px] max-w-[380px] rounded-lg shadow-lg p-4 border ${
+                    <div key={t.id} className={`min-w-[200px] max-w-[320px] rounded-none shadow-md p-3 border text-sm ${
                         t.variant === 'success' ? 'bg-green-50 border-green-200' :
                         t.variant === 'error' ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'
                     }`}>
                         {t.title && (
-                            <div className={`font-semibold ${t.variant === 'success' ? 'text-green-800' : t.variant === 'error' ? 'text-red-800' : 'text-gray-800'}`}>
+                            <div className={`font-medium text-xs ${t.variant === 'success' ? 'text-green-800' : t.variant === 'error' ? 'text-red-800' : 'text-gray-800'}`}>
                                 {t.title}
                             </div>
                         )}
                         {t.description && (
-                            <div className={`mt-1 text-sm ${t.variant === 'success' ? 'text-green-700' : t.variant === 'error' ? 'text-red-700' : 'text-gray-700'}`}>
+                            <div className={`mt-0.5 text-xs ${t.variant === 'success' ? 'text-green-700' : t.variant === 'error' ? 'text-red-700' : 'text-gray-700'}`}>
                                 {t.description}
                             </div>
                         )}

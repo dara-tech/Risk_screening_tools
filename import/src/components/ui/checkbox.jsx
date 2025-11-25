@@ -24,7 +24,7 @@ const Checkbox = React.forwardRef(({ className, checked, onChange, onCheckedChan
         checked={checked}
         onChange={handleChange} // Use our new flexible handler
         className={cn(
-          "h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 focus:ring-offset-0 cursor-pointer",
+          "h-4 w-4 rounded-none border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 focus:ring-offset-0 cursor-pointer",
           className
         )}
         {...props}

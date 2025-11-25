@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useDataEngine } from '@dhis2/app-runtime'
 import { useNavigate } from 'react-router-dom'
 
 import { useToast } from '../components/ui/ui/toast'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import config from '../lib/config'
-import { fetchProgramStageDataElementsWithOptions } from '../lib/dhis2FormData'
+import { fetchProgramStageDataElementsWithOptions, FORM_FIELD_LABELS } from '../lib/dhis2FormData'
 import Filters from '../components/records-list/Filters'
 import HeaderBar from '../components/records-list/HeaderBar'
 import Pagination from '../components/records-list/Pagination'
@@ -34,6 +34,7 @@ const RecordsList = () => {
     
     // Option sets for mapping option codes to display names
     const [dataElementOptionsById, setDataElementOptionsById] = useState({})
+    const [provinceOptions, setProvinceOptions] = useState([])
     
     // Enhanced cache for API responses using refs to prevent dependency issues
     const cacheRef = useRef(new Map())
@@ -66,8 +67,30 @@ const RecordsList = () => {
             try {
                 const { dataElementOptions } = await fetchProgramStageDataElementsWithOptions(engine, config.program.stageId)
                 setDataElementOptionsById(dataElementOptions || {})
+                
+                // Fetch province option set if it exists
+                try {
+                    const provinceAttrId = config.mapping.trackedEntityAttributes.Province
+                    const provinceResponse = await engine.query({
+                        trackedEntityAttribute: {
+                            resource: `trackedEntityAttributes/${provinceAttrId}`,
+                            params: {
+                                fields: 'id,name,valueType,optionSet[id,name,options[id,name,code]]'
+                            }
+                        }
+                    })
+                    
+                    const attr = provinceResponse.trackedEntityAttribute
+                    if (attr?.optionSet?.options && attr.optionSet.options.length > 0) {
+                        setProvinceOptions(attr.optionSet.options.map(opt => ({
+                            value: opt.code || opt.name,
+                            label: opt.name
+                        })))
+                    }
+                } catch (error) {
+                    // Province may not have an option set, that's okay
+                }
             } catch (error) {
-                console.error('Error loading option sets:', error)
             }
         }
         loadOptionSets()
@@ -116,7 +139,6 @@ const RecordsList = () => {
             //     setSelectedOrgUnit(filteredOrgUnits[0].id)
             // }
         } catch (error) {
-            console.error('Error loading org units:', error)
             showToast({
                 title: 'Error',
                 description: 'Failed to load organization units',
@@ -128,7 +150,6 @@ const RecordsList = () => {
 
     const fetchRecords = useCallback(async () => {
         if (!selectedOrgUnit || !selectedPeriod) {
-            console.log('[DEBUG] Missing required parameters:', { selectedOrgUnit, selectedPeriod })
             return
         }
 
@@ -141,7 +162,7 @@ const RecordsList = () => {
             setRecords(cachedData.records)
             setTotalRecords(cachedData.totalRecords)
             setTotalPages(cachedData.totalPages)
-            console.log('🚀 [CACHE] Loaded from cache:', cachedData.records.length, 'records')
+            setLoading(false)
             return
         }
 
@@ -211,6 +232,7 @@ const RecordsList = () => {
                 setRecords([])
                 setTotalRecords(0)
                 setTotalPages(1)
+                setLoading(false)
                 return
             }
             
@@ -388,6 +410,9 @@ const RecordsList = () => {
                         case dataElementMapping.partnerTGW:
                             record.partnerTGW = reverseMapValue('partnerTGW', dv.value) || dv.value
                             break
+                        case dataElementMapping.partnerTGM:
+                            record.partnerTGM = reverseMapValue('partnerTGM', dv.value) || dv.value
+                            break
                         case dataElementMapping.numberOfSexualPartners:
                             record.numberOfSexualPartners = dv.value
                             break
@@ -499,8 +524,6 @@ const RecordsList = () => {
             const loadTime = Math.round(endTime - startTime)
             
             if (process.env.NODE_ENV === 'development') {
-                console.log(`🚀 [PERF] Loaded ${processedRecords.length} records in ${loadTime}ms`)
-                console.log(`📊 Total: ${totalRecordsFromAPI}, Pages: ${totalPagesFromAPI}`)
             }
             
             // Ignore stale responses if the user changed pages mid-flight
@@ -523,10 +546,8 @@ const RecordsList = () => {
             
             // Only show toast for manual refresh, not automatic loads
             if (process.env.NODE_ENV === 'development') {
-                console.log(`🚀 [PERF] Loaded ${processedRecords.length} records in ${loadTime}ms (Page ${currentPage} of ${totalPagesFromAPI})`)
             }
         } catch (error) {
-            console.error('Error fetching records:', error)
             
             // Better error handling
             let errorMessage = 'Failed to load records'
@@ -754,17 +775,20 @@ const RecordsList = () => {
                 resource: `events/${record.id}`
             })
             
-            // Don't update local state immediately - let the refresh handle it
-            // This ensures consistency with server data
+            // Clear cache to force fresh data fetch
+            const cacheKey = `${selectedOrgUnit}-${selectedPeriod}-${currentPage}-${pageSize}`
+            cacheRef.current.delete(cacheKey)
+            lastCacheTimeRef.current = 0
             
             // Always refresh to get updated data from server
-            setTimeout(() => {
-                setLoading(true) // Show loading state during refresh
-                fetchRecords()
-            }, 100) // Small delay to ensure state updates are processed
+            // Wait for fetchRecords to complete
+            try {
+                await fetchRecords()
+            } catch (fetchError) {
+                // fetchRecords will handle its own error display
+            }
             
         } catch (error) {
-            console.error('Failed to delete record:', error)
             alert('Failed to delete record')
         } finally {
             setDeletingId(null)
@@ -794,18 +818,24 @@ const RecordsList = () => {
                     // This ensures consistency with server data
                     
                 } catch (error) {
-                    console.error(`Failed to delete record ${record.id}:`, error)
                     errorCount++
                 }
             }
             
             // Handle pagination after bulk delete
             if (successCount > 0) {
+                // Clear cache to force fresh data fetch
+                const cacheKey = `${selectedOrgUnit}-${selectedPeriod}-${currentPage}-${pageSize}`
+                cacheRef.current.delete(cacheKey)
+                lastCacheTimeRef.current = 0
+                
                 // Always refresh to get updated data from server
-                setTimeout(() => {
-                    setLoading(true) // Show loading state during refresh
-                    fetchRecords()
-                }, 100) // Small delay to ensure state updates are processed
+                // Wait for fetchRecords to complete before resetting bulkDeleting
+                try {
+                    await fetchRecords()
+                } catch (fetchError) {
+                    // fetchRecords will handle its own error display
+                }
             }
             
             // Show appropriate feedback
@@ -830,7 +860,6 @@ const RecordsList = () => {
             }
             
         } catch (error) {
-            console.error('Bulk delete error:', error)
             showToast({
                 title: 'Error',
                 description: 'Bulk delete operation failed. Please try again.',
@@ -840,6 +869,295 @@ const RecordsList = () => {
             setBulkDeleting(false)
         }
     }
+
+    // Inline update handler - updates individual fields directly in DHIS2
+    const handleInlineUpdate = useCallback(async (record, fieldKey, newValue) => {
+        try {
+            // Map field names to DHIS2 IDs
+            const attributeFieldToId = {
+                'systemId': config.mapping.trackedEntityAttributes.System_ID,
+                'uuic': config.mapping.trackedEntityAttributes.UUIC,
+                'familyName': config.mapping.trackedEntityAttributes.Family_Name,
+                'lastName': config.mapping.trackedEntityAttributes.Last_Name,
+                'sex': config.mapping.trackedEntityAttributes.Sex,
+                'dateOfBirth': config.mapping.trackedEntityAttributes.DOB,
+                'province': config.mapping.trackedEntityAttributes.Province, // Also available as data element
+                'od': config.mapping.trackedEntityAttributes.OD,
+                'district': config.mapping.trackedEntityAttributes.District,
+                'commune': config.mapping.trackedEntityAttributes.Commune,
+                'donor': config.mapping.trackedEntityAttributes.Donor,
+                'ngo': config.mapping.trackedEntityAttributes.NGO
+            }
+
+            // Use data element IDs from config to ensure consistency
+            const dataElementFieldToId = {
+                'sexAtBirth': config.mapping.programStageDataElements.sexAtBirth,
+                'genderIdentity': config.mapping.programStageDataElements.genderIdentity,
+                'sexualHealthConcerns': config.mapping.programStageDataElements.sexualHealthConcerns,
+                'hadSexPast6Months': config.mapping.programStageDataElements.hadSexPast6Months,
+                'partnerMale': config.mapping.programStageDataElements.partnerMale,
+                'partnerFemale': config.mapping.programStageDataElements.partnerFemale,
+                'partnerTGW': config.mapping.programStageDataElements.partnerTGW,
+                'partnerTGM': config.mapping.programStageDataElements.partnerTGM,
+                'numberOfSexualPartners': config.mapping.programStageDataElements.numberOfSexualPartners,
+                'past6MonthsPractices': config.mapping.programStageDataElements.past6MonthsPractices,
+                'receiveMoneyForSex': config.mapping.programStageDataElements.receiveMoneyForSex,
+                'paidForSex': config.mapping.programStageDataElements.paidForSex,
+                'sexWithHIVPartner': config.mapping.programStageDataElements.sexWithHIVPartner,
+                'sexWithoutCondom': config.mapping.programStageDataElements.sexWithoutCondom,
+                'stiSymptoms': config.mapping.programStageDataElements.stiSymptoms,
+                'syphilisPositive': config.mapping.programStageDataElements.syphilisPositive,
+                'abortion': config.mapping.programStageDataElements.abortion,
+                'alcoholDrugBeforeSex': config.mapping.programStageDataElements.alcoholDrugBeforeSex,
+                'groupSexChemsex': config.mapping.programStageDataElements.groupSexChemsex,
+                'injectedDrugSharedNeedle': config.mapping.programStageDataElements.injectedDrugSharedNeedle,
+                'noneOfAbove': config.mapping.programStageDataElements.noneOfAbove,
+                'forcedSex': config.mapping.programStageDataElements.forcedSex,
+                'everOnPrep': config.mapping.programStageDataElements.everOnPrep,
+                'currentlyOnPrep': config.mapping.programStageDataElements.currentlyOnPrep,
+                'hivTestPast6Months': config.mapping.programStageDataElements.hivTestPast6Months,
+                'lastHivTestDate': config.mapping.programStageDataElements.lastHivTestDate,
+                'hivTestResult': config.mapping.programStageDataElements.hivTestResult,
+                'riskScreeningResult': config.mapping.programStageDataElements.riskScreeningResult,
+                'riskScreeningScore': config.mapping.programStageDataElements.riskScreeningScore
+            }
+
+            // Normalize value for DHIS2
+            const normalizeValueForDhis = (value, fieldKey) => {
+                if (value === null || value === undefined || value === '') return ''
+                
+                // Boolean fields
+                const booleanFields = ['sexualHealthConcerns', 'hadSexPast6Months', 'partnerMale', 'partnerFemale', 'partnerTGW', 'partnerTGM',
+                    'receiveMoneyForSex', 'paidForSex', 'sexWithHIVPartner', 'sexWithoutCondom', 'stiSymptoms', 
+                    'syphilisPositive', 'abortion', 'alcoholDrugBeforeSex', 'groupSexChemsex', 'injectedDrugSharedNeedle', 
+                    'noneOfAbove', 'forcedSex', 'everOnPrep', 'currentlyOnPrep', 'hivTestPast6Months']
+                
+                if (booleanFields.includes(fieldKey)) {
+                    if (value === 'true' || value === true || value === '1' || value === 1 || value === 'Yes' || value === 'បាទ/ចាស') return 'true'
+                    if (value === 'false' || value === false || value === '0' || value === 0 || value === 'No' || value === 'ទេ') return 'false'
+                    return ''
+                }
+
+                // Date fields
+                if (fieldKey === 'dateOfBirth' || fieldKey === 'lastHivTestDate' || fieldKey === 'eventDate') {
+                    if (value instanceof Date) {
+                        return value.toISOString().split('T')[0]
+                    }
+                    if (typeof value === 'string' && value.includes('-')) {
+                        return value.split('T')[0]
+                    }
+                    return value
+                }
+
+                // Number fields
+                if (fieldKey === 'numberOfSexualPartners' || fieldKey === 'riskScreeningScore' || fieldKey === 'age') {
+                    return String(value || '0')
+                }
+
+                return String(value)
+            }
+
+            // Map display value to option code if needed
+            const mapDisplayValueToOptionCode = (value, fieldKey) => {
+                const dataElementId = dataElementFieldToId[fieldKey]
+                if (!dataElementId || !dataElementOptionsById[dataElementId]) {
+                    return value
+                }
+                const options = dataElementOptionsById[dataElementId]
+                // Try multiple matching strategies
+                const option = options.find(opt => 
+                    opt.label === value || 
+                    opt.value === value || 
+                    opt.name === value ||
+                    opt.code === value ||
+                    (opt.label && opt.label.toLowerCase() === String(value).toLowerCase()) ||
+                    (opt.name && opt.name.toLowerCase() === String(value).toLowerCase())
+                )
+                // Prefer code, then value, then name
+                return option ? (option.code || option.value || option.name || value) : value
+            }
+
+            const normalizedValue = normalizeValueForDhis(newValue, fieldKey)
+
+            // Check if this is a TEI attribute or a data element
+            if (attributeFieldToId[fieldKey]) {
+                // Update TEI attribute
+                const attributeId = attributeFieldToId[fieldKey]
+                await engine.mutate({
+                    type: 'update',
+                    resource: `trackedEntityInstances/${record.trackedEntityInstance}`,
+                    data: {
+                        attributes: [{
+                            attribute: attributeId,
+                            value: normalizedValue
+                        }]
+                    }
+                })
+            } else if (dataElementFieldToId[fieldKey] || fieldKey === 'eventDate') {
+                // Update event data element or event date
+                if (fieldKey === 'eventDate') {
+                    // Update event date
+                    await engine.mutate({
+                        type: 'update',
+                        resource: `events/${record.id}`,
+                        data: {
+                            eventDate: normalizedValue
+                        }
+                    })
+                } else {
+                    // Update data element - use PUT endpoint to update single value
+                    const dataElementId = dataElementFieldToId[fieldKey]
+                    const optionValue = mapDisplayValueToOptionCode(normalizedValue, fieldKey)
+                    
+                    // Fetch current event to get full data
+                    const eventResponse = await engine.query({
+                        event: {
+                            resource: `events/${record.id}`,
+                            params: {
+                                fields: 'dataValues[dataElement,value],eventDate,status,orgUnit,program,programStage,trackedEntityInstance,enrollment'
+                            }
+                        }
+                    })
+                    
+                    const event = eventResponse.event
+                    const existingDataValues = event.dataValues || []
+                    
+                    // Update or add the data value
+                    const updatedDataValues = [...existingDataValues.filter(dv => dv.dataElement !== dataElementId), {
+                        dataElement: dataElementId,
+                        value: optionValue
+                    }]
+
+                    // Submit full event update
+                    await engine.mutate({
+                        type: 'update',
+                        resource: `events/${record.id}`,
+                        data: {
+                            ...event,
+                            dataValues: updatedDataValues
+                        }
+                    })
+                }
+            } else {
+                throw new Error(`Unknown field: ${fieldKey}`)
+            }
+
+            // Update local cache and refresh
+            const cacheKey = `${selectedOrgUnit}-${selectedPeriod}-${currentPage}-${pageSize}`
+            cacheRef.current.delete(cacheKey)
+            
+            // Refresh records
+            setTimeout(() => {
+                fetchRecords()
+            }, 300)
+
+            showToast({
+                title: 'Updated',
+                description: `${FORM_FIELD_LABELS[fieldKey] || fieldKey} updated successfully`,
+                variant: 'success'
+            })
+
+        } catch (error) {
+            showToast({
+                title: 'Update Failed',
+                description: error.message || 'Failed to update field',
+                variant: 'error'
+            })
+            throw error
+        }
+    }, [engine, selectedOrgUnit, selectedPeriod, currentPage, pageSize, dataElementOptionsById, fetchRecords, showToast])
+
+    // Editable fields configuration
+    const editableFields = useMemo(() => new Set([
+        // TEI Attributes
+        'systemId', 'uuic', 'familyName', 'lastName', 'sex', 'dateOfBirth',
+        'province', 'od', 'district', 'commune', 'donor', 'ngo',
+        // Data Elements
+        'sexAtBirth', 'genderIdentity', 'sexualHealthConcerns', 'hadSexPast6Months',
+        'partnerMale', 'partnerFemale', 'partnerTGW', 'numberOfSexualPartners',
+        'receiveMoneyForSex', 'paidForSex', 'sexWithHIVPartner', 'sexWithoutCondom',
+        'stiSymptoms', 'syphilisPositive', 'abortion', 'alcoholDrugBeforeSex',
+        'groupSexChemsex', 'injectedDrugSharedNeedle', 'noneOfAbove', 'forcedSex',
+        'everOnPrep', 'currentlyOnPrep', 'hivTestPast6Months', 'lastHivTestDate',
+        'hivTestResult', 'riskScreeningResult', 'riskScreeningScore', 'eventDate'
+    ]), [])
+
+    // Field options for select fields
+    const fieldOptions = useMemo(() => {
+        const options = {}
+        
+        // Boolean fields with Yes/No options in Khmer
+        const booleanFieldsOptions = [
+            { value: 'true', label: 'បាទ/ចាស' },
+            { value: 'false', label: 'ទេ' }
+        ]
+        
+        const booleanFields = [
+            'sexualHealthConcerns', 'hadSexPast6Months', 'partnerMale', 'partnerFemale', 'partnerTGW',
+            'receiveMoneyForSex', 'paidForSex', 'sexWithHIVPartner', 'sexWithoutCondom', 'stiSymptoms',
+            'syphilisPositive', 'abortion', 'alcoholDrugBeforeSex', 'groupSexChemsex', 
+            'injectedDrugSharedNeedle', 'noneOfAbove', 'forcedSex', 'currentlyOnPrep', 'hivTestPast6Months'
+        ]
+        
+        booleanFields.forEach(field => {
+            options[field] = booleanFieldsOptions
+        })
+
+        // Add options for each data element that has an option set
+        Object.keys(dataElementOptionsById).forEach(dataElementId => {
+            // Find the field key for this data element using config mapping
+            const fieldKey = Object.keys(config.mapping.programStageDataElements).find(
+                key => config.mapping.programStageDataElements[key] === dataElementId
+            )
+            if (fieldKey && dataElementOptionsById[dataElementId]) {
+                options[fieldKey] = dataElementOptionsById[dataElementId].map(opt => ({
+                    value: opt.value,
+                    label: opt.label || opt.name || opt.value
+                }))
+            }
+        })
+
+        // Add special options
+        options.sex = [
+            { value: 'Male', label: 'ប្រុស' },
+            { value: 'Female', label: 'ស្រី' },
+            { value: 'Other', label: 'ផ្សេងៗ' }
+        ]
+
+        // Province options - use from option set if available, otherwise use defaults
+        if (provinceOptions.length > 0) {
+            options.province = provinceOptions
+        } else {
+            options.province = [
+                { value: 'Phnom Penh', label: 'ភ្នំពេញ' },
+                { value: 'Battambang', label: 'បាត់ដំបង' },
+                { value: 'Siem Reap', label: 'សៀមរាប' },
+                { value: 'Kandal', label: 'កណ្ដាល' },
+                { value: 'Kampong Cham', label: 'កំពង់ចាម' }
+            ]
+        }
+
+        // Ever on PrEP options (if not from option set)
+        if (!options.everOnPrep) {
+            options.everOnPrep = [
+                { value: 'true', label: 'បាទ/ចាស' },
+                { value: 'false', label: 'ទេ' },
+                { value: '', label: 'មិនដឹង' }
+            ]
+        }
+
+        return options
+    }, [dataElementOptionsById, provinceOptions])
+
+    // Date fields
+    const dateFields = useMemo(() => [
+        'dateOfBirth', 'lastHivTestDate', 'eventDate'
+    ], [])
+
+    // Number fields
+    const numberFields = useMemo(() => [
+        'numberOfSexualPartners', 'riskScreeningScore', 'age'
+    ], [])
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -879,7 +1197,7 @@ const RecordsList = () => {
 
 
                 {/* Records Table */}
-                <Card className="bg-white border border-gray-200 rounded-lg shadow-sm">
+                <Card className="bg-white border border-gray-200 rounded-none shadow-sm">
                     <CardHeader className="pb-4 border-b border-gray-100">
                         <CardTitle>
                             <HeaderBar
@@ -906,6 +1224,11 @@ const RecordsList = () => {
                             bulkDeleting={bulkDeleting}
                             onView={handleViewRecord}
                             onEdit={handleEditRecord}
+                            onInlineUpdate={handleInlineUpdate}
+                            editableFields={editableFields}
+                            fieldOptions={fieldOptions}
+                            dateFields={dateFields}
+                            numberFields={numberFields}
                         />
                     </CardContent>
                     

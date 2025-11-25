@@ -52,6 +52,7 @@ const RiskScreeningTool = () => {
         partnerMale: '',
         partnerFemale: '',
         partnerTGW: '',
+        partnerTGM: '',
         numberOfSexualPartners: '',
         past6MonthsPractices: '',
         hivTestPast6Months: '',
@@ -367,6 +368,9 @@ const RiskScreeningTool = () => {
                 } else if (elementName.includes('partner\'s sexual identify is tgw')) {
                     mappings.partnerTGW = { id: dataElement.id, name: dataElement.name, valueType: dataElement.valueType }
                     labels.partnerTGW = kmName
+                } else if (elementName.includes('partner\'s sexual identify is tgm')) {
+                    mappings.partnerTGM = { id: dataElement.id, name: dataElement.name, valueType: dataElement.valueType }
+                    labels.partnerTGM = kmName
                 } else if (elementName.includes('have had the following practice')) {
                     mappings.past6MonthsPractices = { id: dataElement.id, name: dataElement.name, valueType: dataElement.valueType }
                     labels.past6MonthsPractices = kmName
@@ -388,12 +392,27 @@ const RiskScreeningTool = () => {
                 }
             })
             
+            // Add fallback mappings from config if dynamic mapping missed any
+            // This ensures we always have mappings even if data element names changed
+            const configMappings = config.mapping.programStageDataElements
+            Object.entries(configMappings).forEach(([fieldKey, deId]) => {
+                // Only add if not already mapped and it's a valid data element ID
+                if (!mappings[fieldKey] && deId && deId.match(/^[a-zA-Z0-9]{11}$/)) {
+                    mappings[fieldKey] = { id: deId, name: fieldKey, valueType: 'TEXT' }
+                    console.log(`[FALLBACK] Added config mapping for ${fieldKey}: ${deId}`)
+                }
+            })
+            
             // Debug logging for field mappings
             if (process.env.NODE_ENV === 'development') {
                 console.log('[DEBUG] Field mappings created:', mappings)
                 console.log('[DEBUG] PrEP mappings:', {
                     everOnPrep: mappings.everOnPrep,
                     currentlyOnPrep: mappings.currentlyOnPrep
+                })
+                console.log('[DEBUG] Risk screening mappings:', {
+                    riskScreeningScore: mappings.riskScreeningScore,
+                    riskScreeningResult: mappings.riskScreeningResult
                 })
             }
             
@@ -962,7 +981,20 @@ const RiskScreeningTool = () => {
                 if (formField === 'everOnPrep' || formField === 'currentlyOnPrep') {
                     console.log(`[DEBUG] Final value for ${formField}:`, String(value))
                 }
+                
+                // Debug logging for risk screening fields
+                if (formField === 'riskScreeningScore' || formField === 'riskScreeningResult') {
+                    console.log(`[SAVE] Risk screening ${formField}:`, { deId, value: String(value), raw })
+                }
             })
+            
+            // Log all data values being saved
+            console.log('[SAVE] Total data values:', dataValues.length)
+            console.log('[SAVE] Data values summary:', dataValues.map(dv => ({ 
+                dataElement: dv.dataElement.substring(0, 11) + '...', 
+                value: String(dv.value).substring(0, 50)
+            })))
+            
             const eventDate = new Date().toISOString().split('T')[0]
             const eventPayload = {
                 trackedEntityInstance: teiId,

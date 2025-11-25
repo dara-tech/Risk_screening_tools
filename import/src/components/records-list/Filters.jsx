@@ -41,7 +41,7 @@ const Filters = ({
                 <div className="flex-1 min-w-[200px]">
                     <Select value={selectedOrgUnit} onValueChange={setSelectedOrgUnit}>
                         <SelectTrigger className="h-10 bg-white border border-slate-300 rounded-md">
-                            <SelectValue placeholder="Select organization" />
+                            <SelectValue placeholder="ជ្រើសរើសអង្គការ" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-gray-200 rounded-md max-h-60 shadow-lg">
                             {orgUnits.map(ou => (
@@ -61,12 +61,12 @@ const Filters = ({
                         disabled={!selectedOrgUnit}
                     >
                         <SelectTrigger className="h-10 bg-white border border-slate-300 rounded-md disabled:bg-gray-100 disabled:cursor-not-allowed">
-                            <SelectValue placeholder={selectedOrgUnit ? "Select period type" : "Select organization first"} />
+                            <SelectValue placeholder={selectedOrgUnit ? "ជ្រើសរើសប្រភេទរយៈពេល" : "ជ្រើសរើសអង្គការជាមុន"} />
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-gray-200 rounded-md shadow-lg">
-                            <SelectItem value="yearly" className="hover:bg-gray-50">Yearly</SelectItem>
-                            <SelectItem value="quarterly" className="hover:bg-gray-50">Quarterly</SelectItem>
-                            <SelectItem value="monthly" className="hover:bg-gray-50">Monthly</SelectItem>
+                            <SelectItem value="yearly" className="hover:bg-gray-50">ប្រចាំឆ្នាំ</SelectItem>
+                            <SelectItem value="quarterly" className="hover:bg-gray-50">ប្រចាំត្រីមាស</SelectItem>
+                            <SelectItem value="monthly" className="hover:bg-gray-50">ប្រចាំខែ</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

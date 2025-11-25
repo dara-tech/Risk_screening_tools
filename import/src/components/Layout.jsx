@@ -5,7 +5,7 @@ import { useLocation, useNavigate, Outlet, Link } from 'react-router-dom'
 
 import { LuActivity } from 'react-icons/lu'
 import { Badge } from './ui/badge'
-import { Shield, Upload, ChevronDown, User, Bell, Settings, Search, FileText, TestTube } from 'lucide-react'
+import { Shield, Upload, ChevronDown, User, Bell, Settings, Search, FileText, TestTube, List, ClipboardCheck } from 'lucide-react'
 import logoImage from '../assets/logo.png'
 
 // Logo fallback removed - now using proper logo import
@@ -67,34 +67,42 @@ const Layout = () => {
     }
 
     const menuItems = [
-        { 
-            id: 'risk-screening-tool', 
-            label: i18n.t('Risk Screening'), 
-            icon: <Shield className="w-4 h-4" />, 
-            path: '/risk-screening-tool',
-            description: i18n.t('Comprehensive STI risk assessment and data entry'),
-        },
+     
         { 
             id: 'import-tool', 
-            label: i18n.t('Data Import'), 
+            label: 'នាំចូលទិន្នន័យ', 
             icon: <Upload className="w-4 h-4" />, 
             path: '/import-tool',
-            description: i18n.t('Import STI screening data from CSV files'),
+            description: 'នាំចូលទិន្នន័យវាយតម្លៃកម្រិតហានិភ័យពីឯកសារ CSV',
         },
         { 
             id: 'records-list', 
-            label: i18n.t('Records List'), 
+            label: 'បញ្ជីកំណត់ត្រា', 
             icon: <FileText className="w-4 h-4" />, 
             path: '/records-list',
-            description: i18n.t('View and manage all screening records'),
+            description: 'មើល និងគ្រប់គ្រងកំណត់ត្រាវាយតម្លៃទាំងអស់',
         },
         { 
-            id: 'api-tests', 
-            label: i18n.t('API Tests'), 
-            icon: <TestTube className="w-4 h-4" />, 
-            path: '/api-tests',
-            description: i18n.t('Test all CRUD operations (GET, POST, PUT, DELETE)'),
-        }
+            id: 'data-elements', 
+            label: 'បញ្ជី Data Elements', 
+            icon: <List className="w-4 h-4" />, 
+            path: '/data-elements',
+            description: 'មើលបញ្ជី Data Elements ទាំងអស់',
+        },
+        { 
+            id: 'question-form', 
+            label: 'ទម្រង់សំណួរ', 
+            icon: <ClipboardCheck className="w-4 h-4" />, 
+            path: '/question-form',
+            description: 'បំពេញទម្រង់សំណួរដោយប្រើ checkbox',
+        },
+        // { 
+        //     id: 'api-tests', 
+        //     label: i18n.t('API Tests'), 
+        //     icon: <TestTube className="w-4 h-4" />, 
+        //     path: '/api-tests',
+        //     description: i18n.t('Test all CRUD operations (GET, POST, PUT, DELETE)'),
+        // }
     ]
 
     const currentMenuItem = menuItems.find(item => 
@@ -126,7 +134,7 @@ const Layout = () => {
                                     className="h-8 w-8 object-contain"
                                 />
                                 <span className="text-sm font-semibold text-gray-900 group-hover:text-gray-700 transition-colors">
-                                   Risk Screening Tool
+                                   ឧបករណ៍វាយតម្លៃកម្រិតហានិភ័យ
                                 </span>
                             </Link>
                         </div>
